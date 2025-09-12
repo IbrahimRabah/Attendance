@@ -16,6 +16,7 @@ $(document).ready(function() {
     loadEmployeesFromStorage();
     console.log('Employees loaded:', employees.length);
     displayCurrentDate();
+    setCurrentWeekBasedOnToday();
     renderWeekPagination();
     renderTable();
     updateStatistics();
@@ -38,7 +39,7 @@ function initializeDatePicker() {
         todayHighlight: true
     }).on('changeDate', function(e) {
         currentMonth = e.date;
-        currentWeek = 0;
+        setCurrentWeekBasedOnToday();
         renderWeekPagination();
         renderTable();
         updateStatistics();
@@ -165,12 +166,63 @@ function getWeeksInMonth(date) {
     return weeks;
 }
 
+// Set current week based on today's date
+function setCurrentWeekBasedOnToday() {
+    const today = new Date();
+    const currentYear = currentMonth.getFullYear();
+    const currentMonthIndex = currentMonth.getMonth();
+    
+    // Only set current week if we're viewing the current month
+    if (today.getFullYear() === currentYear && today.getMonth() === currentMonthIndex) {
+        const weeks = getWeeksInMonth(currentMonth);
+        
+        // Find which week contains today
+        for (let i = 0; i < weeks.length; i++) {
+            const week = weeks[i];
+            for (let j = 0; j < week.length; j++) {
+                const weekDay = week[j];
+                if (weekDay.getDate() === today.getDate() && 
+                    weekDay.getMonth() === today.getMonth() && 
+                    weekDay.getFullYear() === today.getFullYear()) {
+                    currentWeek = i;
+                    return;
+                }
+            }
+        }
+    }
+    
+    // If not current month or today not found, default to first week
+    currentWeek = 0;
+}
+
 // Render week pagination
 function renderWeekPagination() {
     const weekPagination = $('#weekPagination');
     weekPagination.empty();
     
     const weeks = getWeeksInMonth(currentMonth);
+    const today = new Date();
+    
+    // Find which week contains today (if current month)
+    let todayWeekIndex = -1;
+    if (today.getFullYear() === currentMonth.getFullYear() && 
+        today.getMonth() === currentMonth.getMonth()) {
+        for (let i = 0; i < weeks.length; i++) {
+            const week = weeks[i];
+            for (let j = 0; j < week.length; j++) {
+                const weekDay = week[j];
+                if (weekDay.getDate() === today.getDate()) {
+                    todayWeekIndex = i;
+                    break;
+                }
+            }
+            if (todayWeekIndex !== -1) break;
+        }
+    }
+    
+    // Ensure we always show 5 weeks (maximum possible in a month)
+    const maxWeeks = 5;
+    const weeksToShow = Math.max(weeks.length, maxWeeks);
     
     if (weeks.length === 0) {
         weekPagination.append(`
@@ -179,28 +231,47 @@ function renderWeekPagination() {
         return;
     }
     
-    weeks.forEach((week, index) => {
-        const firstDay = week[0];
-        const lastDay = week[week.length - 1];
-        const weekLabel = `الأسبوع ${index + 1}`;
+    for (let index = 0; index < weeksToShow; index++) {
+        const week = weeks[index];
+        let weekLabel = `الأسبوع ${index + 1}`;
+        let title = '';
+        
+        if (week && week.length > 0) {
+            const firstDay = week[0];
+            const lastDay = week[week.length - 1];
+            title = `${firstDay.getDate()}/${firstDay.getMonth() + 1} - ${lastDay.getDate()}/${lastDay.getMonth() + 1}`;
+        } else {
+            // If week doesn't exist, still show the button but disabled
+            weekLabel = `الأسبوع ${index + 1}`;
+            title = 'لا توجد أيام في هذا الأسبوع';
+        }
         
         const isActive = index === currentWeek ? 'active' : '';
+        const isDisabled = !week || week.length === 0 ? 'disabled' : '';
+        const isTodayWeek = index === todayWeekIndex ? 'today-week' : '';
+        
         const button = $(`
-            <button type="button" class="btn btn-outline-primary btn-sm ${isActive}" 
-                    onclick="selectWeek(${index})" title="${firstDay.getDate()}/${firstDay.getMonth() + 1} - ${lastDay.getDate()}/${lastDay.getMonth() + 1}">
+            <button type="button" class="btn btn-outline-primary btn-sm ${isActive} ${isDisabled} ${isTodayWeek}" 
+                    onclick="selectWeek(${index})" title="${title}" ${isDisabled ? 'disabled' : ''}>
                 ${weekLabel}
+                ${index === todayWeekIndex ? '<i class="fas fa-calendar-day ms-1"></i>' : ''}
             </button>
         `);
         
         weekPagination.append(button);
-    });
+    }
 }
 
 // Select specific week
 function selectWeek(weekIndex) {
-    currentWeek = weekIndex;
-    renderWeekPagination();
-    renderTable();
+    const weeks = getWeeksInMonth(currentMonth);
+    
+    // Only select the week if it exists and has days
+    if (weekIndex >= 0 && weekIndex < weeks.length && weeks[weekIndex] && weeks[weekIndex].length > 0) {
+        currentWeek = weekIndex;
+        renderWeekPagination();
+        renderTable();
+    }
 }
 
 // Calculate attendance statistics for an employee in current month
@@ -509,19 +580,25 @@ function updateEmployee() {
 
 // Delete employee
 function deleteEmployee(employeeId) {
-    if (!confirm('هل أنت متأكد من حذف هذا الموظف؟ سيتم حذف جميع بيانات الحضور الخاصة به.')) {
-        return;
-    }
+    const employee = employees.find(emp => emp.id === employeeId);
+    const employeeName = employee ? employee.name : 'الموظف';
     
-    employees = employees.filter(emp => emp.id !== employeeId);
-    filteredEmployees = filteredEmployees.filter(emp => emp.id !== employeeId);
-    
-    saveEmployeesToStorage();
-    renderWeekPagination();
-    renderTable();
-    updateStatistics();
-    
-    showNotification('تم حذف الموظف بنجاح', 'success');
+    showDeleteConfirmation(
+        'حذف الموظف',
+        `هل أنت متأكد من حذف الموظف "${employeeName}"؟`,
+        'سيتم حذف جميع بيانات الحضور الخاصة به ولا يمكن التراجع عن هذا الإجراء.',
+        () => {
+            employees = employees.filter(emp => emp.id !== employeeId);
+            filteredEmployees = filteredEmployees.filter(emp => emp.id !== employeeId);
+            
+            saveEmployeesToStorage();
+            renderWeekPagination();
+            renderTable();
+            updateStatistics();
+            
+            showNotification('تم حذف الموظف بنجاح', 'success');
+        }
+    );
 }
 
 // Filter employees by name
@@ -552,7 +629,7 @@ function clearFilters() {
     $('#employeeFilter').val('');
     $('#monthPicker').datepicker('setDate', new Date());
     currentMonth = new Date();
-    currentWeek = 0;
+    setCurrentWeekBasedOnToday();
     filteredEmployees = [...employees];
     renderWeekPagination();
     renderTable();
@@ -678,15 +755,76 @@ $(document).keydown(function(e) {
 
 // Clear all data
 function clearAllData() {
-    if (confirm('هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.')) {
-        localStorage.removeItem('attendanceEmployees');
-        employees = [];
-        filteredEmployees = [];
-        renderWeekPagination();
-        renderTable();
-        updateStatistics();
-        showNotification('تم حذف جميع البيانات', 'success');
-    }
+    showDeleteConfirmation(
+        'حذف جميع البيانات',
+        'هل أنت متأكد من حذف جميع البيانات؟',
+        'سيتم حذف جميع الموظفين وبيانات الحضور ولا يمكن التراجع عن هذا الإجراء.',
+        () => {
+            localStorage.removeItem('attendanceEmployees');
+            employees = [];
+            filteredEmployees = [];
+            renderWeekPagination();
+            renderTable();
+            updateStatistics();
+            showNotification('تم حذف جميع البيانات', 'success');
+        }
+    );
+}
+
+// Custom Delete Confirmation Modal
+function showDeleteConfirmation(title, message, description, onConfirm) {
+    // Remove existing modal if any
+    $('#deleteConfirmationModal').remove();
+    
+    const modalHtml = `
+        <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content delete-confirmation-modal">
+                    <div class="modal-header border-0 pb-0">
+                        <div class="delete-icon-container">
+                            <div class="delete-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center px-4 pb-4">
+                        <h4 class="modal-title text-danger mb-3" id="deleteConfirmationModalLabel">${title}</h4>
+                        <p class="fs-5 mb-2 text-dark">${message}</p>
+                        <p class="text-muted small mb-4">${description}</p>
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </button>
+                            <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn">
+                                <i class="fas fa-trash me-2"></i>
+                                حذف
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body
+    $('body').append(modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+    modal.show();
+    
+    // Handle confirm button click
+    $('#confirmDeleteBtn').on('click', function() {
+        modal.hide();
+        onConfirm();
+    });
+    
+    // Clean up modal after it's hidden
+    $('#deleteConfirmationModal').on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
 }
 
 // Auto-save reminder
