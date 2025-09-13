@@ -5,6 +5,7 @@ let employees = [];
 let currentMonth = new Date();
 let filteredEmployees = [];
 let currentWeek = 0;
+let isAbsentFilterActive = false; // Track if absent filter is active
 
 // Days of the week in Arabic
 const daysOfWeek = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
@@ -33,6 +34,11 @@ $(document).ready(function() {
     // Initialize employee filter
     $('#employeeFilter').on('keyup', function() {
         filterEmployeesByName();
+    });
+    
+    // Add click event for absent employees filter
+    $('#absentCard').on('click', function() {
+        toggleAbsentFilter();
     });
     
     // Set default date for advance modal
@@ -833,6 +839,42 @@ function filterEmployeesByName() {
         );
     }
     
+    // Apply absent filter if active
+    if (isAbsentFilterActive) {
+        applyAbsentFilter();
+    }
+    
+    renderTable();
+    updateStatistics();
+}
+
+// Toggle absent employees filter
+function toggleAbsentFilter() {
+    isAbsentFilterActive = !isAbsentFilterActive;
+    
+    if (isAbsentFilterActive) {
+        // Apply absent filter
+        applyAbsentFilter();
+        $('#absentCard').addClass('border-3 border-danger');
+        showNotification('تم تطبيق فلتر الغائبين', 'info');
+    } else {
+        // Remove absent filter
+        filterEmployeesByName(); // This will reset to normal filtering
+        $('#absentCard').removeClass('border-3 border-danger');
+        showNotification('تم إلغاء فلتر الغائبين', 'info');
+    }
+}
+
+// Apply absent filter to current filtered employees
+function applyAbsentFilter() {
+    const today = new Date();
+    const todayKey = getAttendanceKey(today, today.getDay() === 0 ? 6 : today.getDay() - 1);
+    
+    filteredEmployees = filteredEmployees.filter(employee => {
+        const todayAttendance = employee.attendance[todayKey];
+        return todayAttendance === 'absent';
+    });
+    
     renderTable();
     updateStatistics();
 }
@@ -850,6 +892,11 @@ function clearFilters() {
     currentMonth = new Date();
     setCurrentWeekBasedOnToday();
     filteredEmployees = [...employees];
+    
+    // Reset absent filter
+    isAbsentFilterActive = false;
+    $('#absentCard').removeClass('border-3 border-danger');
+    
     renderWeekPagination();
     renderTable();
     updateStatistics();
@@ -868,6 +915,7 @@ function updateStatistics() {
     let presentToday = 0;
     let absentToday = 0;
     let totalAdvances = 0;
+    let totalSalaries = 0;
     
     filteredEmployees.forEach(employee => {
         const todayAttendance = employee.attendance[todayKey];
@@ -903,11 +951,16 @@ function updateStatistics() {
             // Fallback for legacy data
             totalAdvances += employee.advance || 0;
         }
+        
+        // Calculate remaining salary for this employee using the same function as the table
+        const remainingSalary = calculateRemainingSalary(employee);
+        totalSalaries += remainingSalary;
     });
     
     $('#presentToday').text(presentToday);
     $('#absentToday').text(absentToday);
     $('#totalAdvances').text(totalAdvances.toLocaleString() + ' ج.م');
+    $('#totalSalaries').text(totalSalaries.toLocaleString() + ' ج.م');
 }
 
 // Show notification

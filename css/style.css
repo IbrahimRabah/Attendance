@@ -591,3 +591,23 @@ header {
     border-color: rgba(255, 255, 255, 0.5);
     transform: translateY(-1px);
 }
+
+/* Clickable Card Styles */
+.clickable-card {
+    transition: all 0.3s ease;
+}
+
+.clickable-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.clickable-card:active {
+    transform: translateY(-1px);
+}
+
+/* Active filter indicator */
+.clickable-card.border-3 {
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3) !important;
+    transform: translateY(-2px);
+}
