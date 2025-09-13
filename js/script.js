@@ -170,11 +170,12 @@ function saveEmployeesToStorage() {
     localStorage.setItem('attendanceEmployees', JSON.stringify(employees));
 }
 
-// Generate attendance key for specific month and day
+// Generate attendance key for specific date
 function getAttendanceKey(date, dayIndex) {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
-    return `${year}-${month.toString().padStart(2, '0')}-${dayIndex}`;
+    const day = date.getDate();
+    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 }
 
 // Get weeks in the current month
