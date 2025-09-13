@@ -12,6 +12,15 @@ const daysOfWeek = ['السبت', 'الأحد', 'الاثنين', 'الثلاث�
 // Initialize the application
 $(document).ready(function() {
     console.log('Application initializing...');
+    
+    console.log('User authenticated, continuing initialization...');
+    
+    // Display current user info
+    displayUserInfo();
+    
+    // Setup logout functionality
+    setupLogout();
+    
     initializeDatePicker();
     loadEmployeesFromStorage();
     console.log('Employees loaded:', employees.length);
@@ -27,6 +36,42 @@ $(document).ready(function() {
     });
     console.log('Application initialized');
 });
+
+// Setup logout functionality
+function setupLogout() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            showDeleteConfirmation(
+                'تسجيل الخروج',
+                'هل أنت متأكد من تسجيل الخروج؟',
+                'سيتم إنهاء جلسة العمل الحالية وتوجيهك إلى صفحة تسجيل الدخول.',
+                () => {
+                    if (window.AttendanceAuth) {
+                        window.AttendanceAuth.logout();
+                    } else {
+                        // Fallback if auth system is not available
+                        localStorage.clear();
+                        window.location.href = 'login.html';
+                    }
+                }
+            );
+        });
+    }
+}
+
+// Display current user information
+function displayUserInfo() {
+    const userNameElement = document.getElementById('userName');
+    if (userNameElement && window.AttendanceAuth) {
+        const currentUser = window.AttendanceAuth.getCurrentUser();
+        if (currentUser && currentUser.email) {
+            // Extract name from email (before @)
+            const userName = currentUser.email.split('@')[0];
+            userNameElement.textContent = `مرحباً، ${userName}`;
+        }
+    }
+}
 
 // Initialize Bootstrap Datepicker
 function initializeDatePicker() {
