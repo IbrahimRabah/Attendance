@@ -401,6 +401,38 @@ function getMonthlyAdvanceWithDate(employee) {
     };
 }
 
+// Calculate daily salary (salary divided by 30 days)
+function calculateDailySalary(employee) {
+    return employee.salary / 30;
+}
+
+// Calculate total deductions (absent days + advances)
+function calculateTotalDeductions(employee) {
+    const dailySalary = calculateDailySalary(employee);
+    const monthlyStats = calculateMonthlyAttendance(employee);
+    const advanceInfo = getMonthlyAdvanceWithDate(employee);
+    
+    // Calculate deduction for absent days
+    const absentDaysDeduction = monthlyStats.absentDays * dailySalary;
+    
+    // Total deductions = absent days deduction + advances
+    const totalDeductions = absentDaysDeduction + advanceInfo.amount;
+    
+    return {
+        absentDaysDeduction: absentDaysDeduction,
+        advancesDeduction: advanceInfo.amount,
+        totalDeductions: totalDeductions
+    };
+}
+
+// Calculate remaining salary
+function calculateRemainingSalary(employee) {
+    const deductions = calculateTotalDeductions(employee);
+    const remainingSalary = employee.salary - deductions.totalDeductions;
+    
+    return Math.max(0, remainingSalary); // Ensure salary doesn't go negative
+}
+
 // Render the attendance table
 function renderTable() {
     console.log('renderTable called');
@@ -414,7 +446,7 @@ function renderTable() {
     if (filteredEmployees.length === 0) {
         tableBody.append(`
             <tr>
-                <td colspan="13" class="text-center text-muted py-4">
+                <td colspan="15" class="text-center text-muted py-4">
                     <i class="fas fa-users fa-2x mb-2"></i>
                     <br>
                     لا توجد بيانات موظفين لعرضها
@@ -434,6 +466,8 @@ function renderTable() {
         // Calculate monthly statistics
         const monthlyStats = calculateMonthlyAttendance(employee);
         const advanceInfo = getMonthlyAdvanceWithDate(employee);
+        const deductionsInfo = calculateTotalDeductions(employee);
+        const remainingSalary = calculateRemainingSalary(employee);
         
         // Employee basic info
         row.append(`
@@ -460,6 +494,19 @@ function renderTable() {
                     <button class="btn btn-sm btn-outline-primary mt-1" onclick="toggleAdvanceRow(${employee.id})" title="عرض/إخفاء تفاصيل السلف">
                         <i class="fas fa-chevron-down" id="advanceToggleIcon${employee.id}"></i>
                     </button>
+                </div>
+            </td>
+            <td class="align-middle text-warning">
+                <div class="d-flex flex-column">
+                    <span class="fw-bold">${deductionsInfo.totalDeductions.toLocaleString()} ج.م</span>
+                    <small class="text-muted">غياب: ${deductionsInfo.absentDaysDeduction.toLocaleString()}</small>
+                    <small class="text-muted">سلف: ${deductionsInfo.advancesDeduction.toLocaleString()}</small>
+                </div>
+            </td>
+            <td class="align-middle ${remainingSalary < employee.salary * 0.5 ? 'text-danger' : 'text-success'}">
+                <div class="d-flex flex-column">
+                    <span class="fw-bold">${remainingSalary.toLocaleString()} ج.م</span>
+                    <small class="text-muted">${((remainingSalary / employee.salary) * 100).toFixed(1)}%</small>
                 </div>
             </td>
         `);
@@ -518,7 +565,7 @@ function renderTable() {
         // Add expandable row for advance details
         const expandableRow = $(`
             <tr id="expandableRow${employee.id}" class="collapse">
-                <td colspan="13" class="p-0">
+                <td colspan="15" class="p-0">
                     <div class="card border-0">
                         <div class="card-body">
                             <h6 class="card-title">تفاصيل السلف - ${employee.name}</h6>
