@@ -45,7 +45,127 @@ $(document).ready(function() {
     $('#advanceDate').val(new Date().toISOString().split('T')[0]);
     
     console.log('Application initialized');
+
+    // Month Report: Show report when modal is opened
+    $('#monthReportModal').on('show.bs.modal', function () {
+        generateMonthReport();
+    });
 });
+// Generate and display the month report for all employees
+function generateMonthReport() {
+    let reportRows = '';
+    let totalSalaries = 0;
+    let totalAdvances = 0;
+    let totalRemaining = 0;
+    let totalAbsent = 0;
+
+    employees.forEach(emp => {
+        const monthlyStats = calculateMonthlyAttendance(emp);
+        const advanceInfo = getMonthlyAdvanceWithDate(emp);
+        const deductions = calculateTotalDeductions(emp);
+        const remaining = calculateRemainingSalary(emp);
+
+        reportRows += `
+            <tr>
+                <td>${emp.name}</td>
+                <td>${emp.position || ''}</td>
+                <td>${monthlyStats.absentDays}</td>
+                <td>${emp.salary ? emp.salary.toLocaleString() : ''}</td>
+                <td>${remaining.toLocaleString()}</td>
+                <td>${deductions.totalDeductions.toLocaleString()}</td>
+                <td>${advanceInfo.amount ? advanceInfo.amount.toLocaleString() : 0}</td>
+            </tr>
+        `;
+        totalSalaries += emp.salary || 0;
+        totalAdvances += advanceInfo.amount || 0;
+        totalRemaining += remaining;
+        totalAbsent += monthlyStats.absentDays;
+    });
+
+    // Summary row
+    let summaryRow = `
+        <tr class="table-info fw-bold">
+            <td colspan="2">الإجمالي</td>
+            <td>${totalAbsent}</td>
+            <td>${totalSalaries.toLocaleString()}</td>
+            <td>${totalRemaining.toLocaleString()}</td>
+            <td></td>
+            <td>${totalAdvances.toLocaleString()}</td>
+        </tr>
+    `;
+
+
+    // Get Arabic month name and year
+    const months = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    const monthName = months[currentMonth.getMonth()];
+    const year = currentMonth.getFullYear();
+
+    // Title section with icon, company name, and month
+    const titleHtml = `
+        <div class="d-flex align-items-center mb-2">
+            <img src="images/elzahp.png" alt="شعار الشركة" style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%; margin-left: 12px;">
+            <div>
+                <h3 class="mb-0"><i class="fas fa-file-alt me-2"></i> تقرير شهر الموظفين - شركة الذهبي</h3>
+                <div class="text-muted fs-5">${monthName} ${year}</div>
+            </div>
+        </div>
+    `;
+
+    // Table HTML with PDF button
+    const tableHtml = `
+        ${titleHtml}
+        <div class="mb-3 text-end">
+            <button class="btn btn-outline-primary" onclick="printMonthReport()">
+                <i class="fas fa-file-pdf me-2"></i>حفظ التقرير كـ PDF
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped text-center align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>اسم الموظف</th>
+                        <th>الوظيفة</th>
+                        <th>أيام الغياب</th>
+                        <th>المرتب</th>
+                        <th>الباقي من المرتب</th>
+                        <th>إجمالي الخصم</th>
+                        <th>السلف</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${reportRows}
+                    ${summaryRow}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Set content in modal
+    document.getElementById('monthReportContent').innerHTML = tableHtml;
+}
+
+// Print or save the month report as PDF
+function printMonthReport() {
+    const printContents = document.getElementById('monthReportContent').innerHTML;
+    const printWindow = window.open('', '', 'width=1000,height=800');
+    printWindow.document.write(`
+        <html dir="rtl" lang="ar">
+        <head>
+            <title>تقرير شهر الموظفين</title>
+            <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css' rel='stylesheet'>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>body{padding:32px;}</style>
+        </head>
+        <body>${printContents}</body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
 
 // Setup logout functionality
 function setupLogout() {
