@@ -547,6 +547,9 @@ function renderTable() {
         row.append(`
             <td class="align-middle action-buttons no-print">
                 <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-success" onclick="printMonthlyReport(${employee.id})" title="طباعة تفاصيل الشهر">
+                        <i class="fas fa-print"></i>
+                    </button>
                     <button class="btn btn-sm btn-info" onclick="addAdvanceToEmployee(${employee.id})" title="إضافة سلفة">
                         <i class="fas fa-money-bill-wave"></i>
                     </button>
@@ -1417,6 +1420,583 @@ function deleteAdvance(employeeId, advanceId) {
             showNotification('تم حذف السلفة بنجاح', 'success');
         }
     );
+}
+
+// Print Monthly Report Function
+function printMonthlyReport(employeeId) {
+    console.log('Printing monthly report for employee:', employeeId);
+    
+    // Find the employee
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) {
+        showNotification('لم يتم العثور على بيانات الموظف', 'error');
+        return;
+    }
+    
+    // Get current month info
+    const monthName = getArabicMonthName(currentMonth);
+    const year = currentMonth.getFullYear();
+    
+    // Calculate monthly statistics
+    const monthlyStats = calculateMonthlyAttendance(employee);
+    const advanceInfo = getMonthlyAdvanceWithDate(employee);
+    const deductionsInfo = calculateTotalDeductions(employee);
+    const remainingSalary = calculateRemainingSalary(employee);
+    
+    // Get only absent days in the month
+    const daysInMonth = getDaysInMonth(currentMonth);
+    let attendanceDetails = '';
+    let absentDaysCount = 0;
+    
+    daysInMonth.forEach(day => {
+        // Get the correct day index for our Arabic weekdays array
+        const dayOfWeekIndex = day.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        let arabicDayIndex;
+        
+        // Convert JavaScript day index to our Arabic days array index
+        if (dayOfWeekIndex === 0) { // Sunday
+            arabicDayIndex = 1; // الأحد
+        } else if (dayOfWeekIndex === 1) { // Monday
+            arabicDayIndex = 2; // الاثنين
+        } else if (dayOfWeekIndex === 2) { // Tuesday
+            arabicDayIndex = 3; // الثلاثاء
+        } else if (dayOfWeekIndex === 3) { // Wednesday
+            arabicDayIndex = 4; // الأربعاء
+        } else if (dayOfWeekIndex === 4) { // Thursday
+            arabicDayIndex = 5; // الخميس
+        } else if (dayOfWeekIndex === 5) { // Friday
+            arabicDayIndex = -1; // Skip Friday (weekend)
+        } else if (dayOfWeekIndex === 6) { // Saturday
+            arabicDayIndex = 0; // السبت
+        }
+        
+        // Skip Fridays (weekend)
+        if (arabicDayIndex === -1) return;
+        
+        const dayName = daysOfWeek[arabicDayIndex];
+        const attendanceKey = getAttendanceKey(day, arabicDayIndex);
+        const attendanceStatus = employee.attendance[attendanceKey] || 'not-set';
+        
+        // Show ONLY explicitly marked absent days
+        if (attendanceStatus === 'absent') {
+            absentDaysCount++;
+            attendanceDetails += `
+                <tr class="table-danger">
+                    <td class="fw-bold">${day.getDate()}</td>
+                    <td class="fw-bold">${dayName}</td>
+                    <td class="text-danger fw-bold">
+                        <i class="fas fa-times-circle me-1"></i>
+                        غائب
+                    </td>
+                </tr>
+            `;
+        }
+    });
+    
+    if (attendanceDetails === '') {
+        attendanceDetails = `
+            <tr>
+                <td colspan="3" class="text-center text-success py-4">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <br>
+                    <strong>ممتاز! لا توجد أيام غياب في هذا الشهر</strong>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Get advance details
+    let advanceDetails = '';
+    if (employee.advances && employee.advances.length > 0) {
+        const monthlyAdvances = employee.advances.filter(advance => {
+            const advanceDate = new Date(advance.date);
+            return advanceDate.getMonth() === currentMonth.getMonth() && 
+                   advanceDate.getFullYear() === currentMonth.getFullYear();
+        });
+        
+        monthlyAdvances.forEach(advance => {
+            advanceDetails += `
+                <tr>
+                    <td>${new Date(advance.date).toLocaleDateString('ar-EG')}</td>
+                    <td>${advance.amount.toLocaleString()} ج.م</td>
+                    <td>${advance.notes || '-'}</td>
+                </tr>
+            `;
+        });
+    }
+    
+    if (!advanceDetails) {
+        advanceDetails = '<tr><td colspan="3" class="text-center text-muted">لا توجد سلف في هذا الشهر</td></tr>';
+    }
+    
+    // Create the print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>تقرير شهري - ${employee.name}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+                
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 0.5in;
+                    }
+                    body { 
+                        font-size: 9px !important; 
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        line-height: 1.2 !important;
+                    }
+                    .no-print { display: none !important; }
+                    .page-break { page-break-after: always; }
+                    .print-container { 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        max-width: 100% !important;
+                    }
+                    .header-section { 
+                        background: #007bff !important; 
+                        -webkit-print-color-adjust: exact; 
+                        color-adjust: exact;
+                        padding: 0.8rem !important;
+                        margin-bottom: 0.5rem !important;
+                    }
+                    .header-section h1 { font-size: 1.1rem !important; margin-bottom: 0.1rem !important; }
+                    .header-section h3 { font-size: 0.9rem !important; margin-bottom: 0.1rem !important; }
+                    .header-section p { font-size: 0.8rem !important; margin: 0 !important; }
+                    .content-section { padding: 0.5rem !important; }
+                    .info-card { margin-bottom: 0.5rem !important; }
+                    .info-card .card-header { padding: 0.4rem !important; font-size: 0.75rem !important; }
+                    .info-card .card-body { padding: 0.5rem !important; }
+                    .stat-box { padding: 0.4rem !important; margin-bottom: 0.3rem !important; }
+                    .stat-box h4 { font-size: 1rem !important; margin-bottom: 0.1rem !important; }
+                    .stat-box p { font-size: 0.65rem !important; margin: 0 !important; }
+                    .table { font-size: 0.7rem !important; }
+                    .table thead th { padding: 0.3rem 0.5rem !important; font-size: 0.65rem !important; }
+                    .table tbody td { padding: 0.25rem 0.5rem !important; font-size: 0.6rem !important; }
+                    .section-divider { margin: 0.3rem 0 !important; height: 1px !important; }
+                    .row.mb-4 { margin-bottom: 0.5rem !important; }
+                    .table-container { padding: 2px !important; }
+                    .employee-info-row p { margin-bottom: 0.2rem !important; font-size: 0.7rem !important; }
+                    .salary-calc-row p { margin-bottom: 0.2rem !important; font-size: 0.7rem !important; }
+                }
+                
+                * {
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    margin: 0;
+                    padding: 10px;
+                    min-height: 100vh;
+                    font-size: 10px;
+                    line-height: 1.3;
+                }
+                
+                .print-container {
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                    overflow: hidden;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                
+                .header-section {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 1rem;
+                    text-align: center;
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .header-section h1 {
+                    font-size: 1.4rem;
+                    font-weight: 900;
+                    margin-bottom: 0.2rem;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                .header-section h3 {
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    margin-bottom: 0.2rem;
+                    position: relative;
+                    z-index: 1;
+                }
+                
+                .header-section p {
+                    font-size: 0.9rem;
+                    opacity: 0.9;
+                    position: relative;
+                    z-index: 1;
+                    margin: 0;
+                }
+                
+                .content-section {
+                    padding: 1rem;
+                }
+                
+                .info-card {
+                    border: none;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+                    margin-bottom: 0.8rem;
+                    overflow: hidden;
+                }
+                
+                .info-card .card-header {
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border-bottom: 1px solid #dee2e6;
+                    font-weight: 700;
+                    font-size: 0.8rem;
+                    padding: 0.6rem;
+                }
+                
+                .info-card .card-header i {
+                    color: #007bff;
+                    margin-left: 4px;
+                }
+                
+                .info-card .card-body {
+                    padding: 0.8rem;
+                }
+                
+                .table-container {
+                    border-radius: 6px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    padding: 4px;
+                    background: #f8f9fa;
+                }
+                
+                .table {
+                    margin-bottom: 0;
+                    font-size: 0.75rem;
+                    border-collapse: separate;
+                    border-spacing: 3px 0;
+                }
+                
+                .table thead {
+                    background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+                    color: white;
+                }
+                
+                .table thead th {
+                    border: none;
+                    padding: 0.5rem 1rem;
+                    font-weight: 600;
+                    text-align: center;
+                    position: relative;
+                    border-radius: 4px;
+                    margin: 0 2px;
+                    font-size: 0.7rem;
+                }
+                
+                .table tbody tr {
+                    transition: background-color 0.2s ease;
+                }
+                
+                .table tbody tr:hover {
+                    background-color: rgba(0,123,255,0.05);
+                }
+                
+                .table tbody td {
+                    padding: 0.4rem 1rem;
+                    border-color: #f1f3f4;
+                    vertical-align: middle;
+                    text-align: center;
+                    border-radius: 3px;
+                    margin: 0 2px;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                    font-size: 0.7rem;
+                }
+                
+                .stat-box {
+                    background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+                    color: white;
+                    padding: 0.6rem;
+                    border-radius: 8px;
+                    text-align: center;
+                    margin-bottom: 0.6rem;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
+                    position: relative;
+                    overflow: hidden;
+                }
+                
+                .stat-box h4 {
+                    font-size: 1.2rem;
+                    font-weight: 900;
+                    margin-bottom: 0.2rem;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+                }
+                
+                .stat-box p {
+                    margin: 0;
+                    font-weight: 600;
+                    opacity: 0.95;
+                    font-size: 0.7rem;
+                }
+                
+                .stat-danger {
+                    background: linear-gradient(135deg, #dc3545 0%, #e85d75 100%);
+                    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.2);
+                }
+                
+                .stat-warning {
+                    background: linear-gradient(135deg, #ffc107 0%, #ffda6a 100%);
+                    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+                    color: #212529;
+                }
+                
+                .stat-info {
+                    background: linear-gradient(135deg, #17a2b8 0%, #3dd5f3 100%);
+                    box-shadow: 0 4px 15px rgba(23, 162, 184, 0.2);
+                }
+                
+                .print-date {
+                    color: #6c757d;
+                    font-size: 0.7rem;
+                    font-weight: 500;
+                }
+                
+                .success-message {
+                    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                    border: 1px solid #b8dacd;
+                    border-radius: 6px;
+                    padding: 1rem;
+                    text-align: center;
+                }
+                
+                .btn-modern {
+                    padding: 8px 20px;
+                    border-radius: 15px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border: none;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                    transition: all 0.3s ease;
+                    margin: 0 6px;
+                    font-size: 0.7rem;
+                }
+                
+                .btn-primary-modern {
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                    color: white;
+                }
+                
+                .btn-secondary-modern {
+                    background: linear-gradient(135deg, #6c757d 0%, #545b62 100%);
+                    color: white;
+                }
+                
+                .section-divider {
+                    height: 1px;
+                    background: linear-gradient(90deg, transparent 0%, #007bff 50%, transparent 100%);
+                    margin: 0.8rem 0;
+                    border-radius: 1px;
+                }
+                
+                .row.mb-4 {
+                    margin-bottom: 0.8rem !important;
+                }
+                
+                .employee-info-row p {
+                    margin-bottom: 0.3rem;
+                    font-size: 0.8rem;
+                }
+                
+                .salary-calc-row p {
+                    margin-bottom: 0.3rem;
+                    font-size: 0.8rem;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-container">
+                <!-- Header -->
+                <div class="header-section">
+                    <h1><i class="fas fa-file-alt me-2"></i>التقرير الشهري للموظف</h1>
+                    <h3>${employee.name}</h3>
+                    <p>شهر ${monthName} ${year}</p>
+                </div>
+                
+                <div class="content-section">
+                    <!-- Employee Information -->
+                    <div class="info-card card">
+                        <div class="card-header">
+                            <i class="fas fa-user"></i>معلومات الموظف
+                        </div>
+                        <div class="card-body">
+                            <div class="row employee-info-row">
+                                <div class="col-md-6">
+                                    <p><strong>الاسم:</strong> ${employee.name}</p>
+                                    <p><strong>الوظيفة:</strong> ${employee.position}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>المرتب الأساسي:</strong> ${employee.salary.toLocaleString()} ج.م</p>
+                                    <p><strong>تاريخ التقرير:</strong> <span class="print-date">${new Date().toLocaleDateString('ar-EG')}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Monthly Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="stat-box">
+                                <h4>${monthlyStats.presentDays}</h4>
+                                <p>أيام الحضور</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box stat-danger">
+                                <h4>${monthlyStats.absentDays}</h4>
+                                <p>أيام الغياب</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box stat-warning">
+                                <h4>${deductionsInfo.totalDeductions.toLocaleString()}</h4>
+                                <p>إجمالي الخصم (ج.م)</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-box stat-info">
+                                <h4>${remainingSalary.toLocaleString()}</h4>
+                                <p>صافي المرتب (ج.م)</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section-divider"></div>
+                    
+                    <!-- Attendance Details (Absent Days Only) -->
+                    <div class="info-card card">
+                        <div class="card-header">
+                            <i class="fas fa-calendar-times"></i>أيام الغياب فقط
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th><i class="fas fa-calendar-day me-1"></i>التاريخ</th>
+                                            <th><i class="fas fa-calendar-week me-1"></i>اليوم</th>
+                                            <th><i class="fas fa-times-circle me-1"></i>حالة الغياب</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${attendanceDetails}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advances Details -->
+                    <div class="info-card card">
+                        <div class="card-header">
+                            <i class="fas fa-money-bill-wave"></i>تفاصيل السلف
+                        </div>
+                        <div class="card-body">
+                            <div class="table-container">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th><i class="fas fa-calendar-alt me-1"></i>التاريخ</th>
+                                            <th><i class="fas fa-coins me-1"></i>المبلغ</th>
+                                            <th><i class="fas fa-sticky-note me-1"></i>ملاحظات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${advanceDetails}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3">
+                                <p><strong>إجمالي السلف الشهرية:</strong> ${advanceInfo.amount.toLocaleString()} ج.م</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Salary Calculations -->
+                    <div class="info-card card">
+                        <div class="card-header">
+                            <i class="fas fa-calculator"></i>حسابات المرتب
+                        </div>
+                        <div class="card-body">
+                            <div class="row salary-calc-row">
+                                <div class="col-md-6">
+                                    <p><strong>المرتب الأساسي:</strong> ${employee.salary.toLocaleString()} ج.م</p>
+                                    <p><strong>خصم أيام الغياب:</strong> ${deductionsInfo.absentDaysDeduction.toLocaleString()} ج.م</p>
+                                    <p><strong>خصم السلف:</strong> ${deductionsInfo.advancesDeduction.toLocaleString()} ج.م</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>إجمالي الخصومات:</strong> ${deductionsInfo.totalDeductions.toLocaleString()} ج.م</p>
+                                    <p class="h6 text-success"><strong>صافي المرتب:</strong> ${remainingSalary.toLocaleString()} ج.م</p>
+                                    <p><small>نسبة المتبقي: ${((remainingSalary / employee.salary) * 100).toFixed(1)}%</small></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4 no-print">
+                        <button class="btn btn-modern btn-primary-modern" onclick="window.print()">
+                            <i class="fas fa-print me-2"></i>طباعة التقرير
+                        </button>
+                        <button class="btn btn-modern btn-secondary-modern" onclick="window.close()">
+                            <i class="fas fa-times me-2"></i>إغلاق
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+}
+
+// Helper function to get Arabic month name
+function getArabicMonthName(date) {
+    const months = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    return months[date.getMonth()];
+}
+
+// Helper function to get all days in a month
+function getDaysInMonth(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        days.push(new Date(year, month, day));
+    }
+    
+    return days;
 }
 
 // Initialize service worker for offline functionality (if available)
