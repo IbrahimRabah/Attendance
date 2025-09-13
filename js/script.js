@@ -46,7 +46,7 @@ function setupLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-            showDeleteConfirmation(
+            showLogoutConfirmation(
                 'تسجيل الخروج',
                 'هل أنت متأكد من تسجيل الخروج؟',
                 'سيتم إنهاء جلسة العمل الحالية وتوجيهك إلى صفحة تسجيل الدخول.',
@@ -1067,6 +1067,62 @@ function showDeleteConfirmation(title, message, description, onConfirm) {
     
     // Clean up modal after it's hidden
     $('#deleteConfirmationModal').on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+}
+
+// Custom Logout Confirmation Modal
+function showLogoutConfirmation(title, message, description, onConfirm) {
+    // Remove existing modal if any
+    $('#logoutConfirmationModal').remove();
+    
+    const modalHtml = `
+        <div class="modal fade" id="logoutConfirmationModal" tabindex="-1" aria-labelledby="logoutConfirmationModalLabel" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content delete-confirmation-modal">
+                    <div class="modal-header border-0 pb-0">
+                        <div class="delete-icon-container">
+                            <div class="delete-icon">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body text-center px-4 pb-4">
+                        <h4 class="modal-title text-warning mb-3" id="logoutConfirmationModalLabel">${title}</h4>
+                        <p class="fs-5 mb-2 text-dark">${message}</p>
+                        <p class="text-muted small mb-4">${description}</p>
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-2"></i>
+                                إلغاء
+                            </button>
+                            <button type="button" class="btn btn-warning px-4" id="confirmLogoutBtn">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                تسجيل الخروج
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to body
+    $('body').append(modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('logoutConfirmationModal'));
+    modal.show();
+    
+    // Handle confirm button click
+    $('#confirmLogoutBtn').on('click', function() {
+        modal.hide();
+        onConfirm();
+    });
+    
+    // Clean up modal after it's hidden
+    $('#logoutConfirmationModal').on('hidden.bs.modal', function () {
         $(this).remove();
     });
 }
