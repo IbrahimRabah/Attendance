@@ -34,6 +34,10 @@ $(document).ready(function() {
     $('#employeeFilter').on('keyup', function() {
         filterEmployeesByName();
     });
+    
+    // Set default date for advance modal
+    $('#advanceDate').val(new Date().toISOString().split('T')[0]);
+    
     console.log('Application initialized');
 });
 
@@ -352,12 +356,48 @@ function calculateMonthlyAttendance(employee) {
 
 // Get advance with date for current month
 function getMonthlyAdvanceWithDate(employee) {
-    const advanceDate = employee.advanceDate ? new Date(employee.advanceDate) : new Date();
-    const dateStr = advanceDate.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' });
+    // Migration: Convert old single advance to new array format
+    if (employee.advance !== undefined && !employee.advances) {
+        employee.advances = employee.advance > 0 ? [{
+            amount: employee.advance,
+            date: employee.advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now()
+        }] : [];
+        delete employee.advance;
+        delete employee.advanceDate;
+    }
+    
+    // Ensure advances array exists
+    if (!employee.advances) {
+        employee.advances = [];
+    }
+    
+    // Calculate total advances for current month
+    const currentYear = currentMonth.getFullYear();
+    const currentMonthIndex = currentMonth.getMonth();
+    
+    let totalAmount = 0;
+    let latestDate = '';
+    
+    employee.advances.forEach(advance => {
+        const advanceDate = new Date(advance.date);
+        if (advanceDate.getFullYear() === currentYear && advanceDate.getMonth() === currentMonthIndex) {
+            totalAmount += advance.amount;
+            if (!latestDate || advanceDate > new Date(latestDate)) {
+                latestDate = advance.date;
+            }
+        }
+    });
+    
+    const dateStr = latestDate ? new Date(latestDate).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
     
     return {
-        amount: employee.advance || 0,
-        date: dateStr
+        amount: totalAmount,
+        date: latestDate ? dateStr : '-',
+        count: employee.advances.filter(advance => {
+            const advanceDate = new Date(advance.date);
+            return advanceDate.getFullYear() === currentYear && advanceDate.getMonth() === currentMonthIndex;
+        }).length
     };
 }
 
@@ -416,6 +456,10 @@ function renderTable() {
                 <div class="d-flex flex-column">
                     <span class="fw-bold">${advanceInfo.amount.toLocaleString()} ج.م</span>
                     <small class="text-muted">${advanceInfo.date}</small>
+                    ${advanceInfo.count > 1 ? `<small class="text-info">(${advanceInfo.count} سلفة)</small>` : ''}
+                    <button class="btn btn-sm btn-outline-primary mt-1" onclick="toggleAdvanceRow(${employee.id})" title="عرض/إخفاء تفاصيل السلف">
+                        <i class="fas fa-chevron-down" id="advanceToggleIcon${employee.id}"></i>
+                    </button>
                 </div>
             </td>
         `);
@@ -456,6 +500,9 @@ function renderTable() {
         row.append(`
             <td class="align-middle action-buttons no-print">
                 <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-info" onclick="addAdvanceToEmployee(${employee.id})" title="إضافة سلفة">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </button>
                     <button class="btn btn-sm btn-warning" onclick="editEmployee(${employee.id})" title="تعديل الموظف">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -467,6 +514,24 @@ function renderTable() {
         `);
         
         tableBody.append(row);
+        
+        // Add expandable row for advance details
+        const expandableRow = $(`
+            <tr id="expandableRow${employee.id}" class="collapse">
+                <td colspan="13" class="p-0">
+                    <div class="card border-0">
+                        <div class="card-body">
+                            <h6 class="card-title">تفاصيل السلف - ${employee.name}</h6>
+                            <div id="advanceDetails${employee.id}">
+                                <!-- Advance details will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+        
+        tableBody.append(expandableRow);
     });
     
     console.log('Table rendered with', filteredEmployees.length, 'employees');
@@ -546,13 +611,22 @@ function addEmployee() {
         return;
     }
     
+    // Create advances array with initial advance if provided
+    const advances = [];
+    if (advance > 0) {
+        advances.push({
+            amount: advance,
+            date: advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now()
+        });
+    }
+    
     const newEmployee = {
         id: Date.now(),
         name: name,
         position: position,
         salary: salary,
-        advance: advance,
-        advanceDate: advanceDate || new Date().toISOString().split('T')[0],
+        advances: advances,
         attendance: {}
     };
     
@@ -575,12 +649,28 @@ function editEmployee(employeeId) {
     const employee = employees.find(emp => emp.id === employeeId);
     if (!employee) return;
     
+    // Migration: Convert old single advance to new array format
+    if (employee.advance !== undefined && !employee.advances) {
+        employee.advances = employee.advance > 0 ? [{
+            amount: employee.advance,
+            date: employee.advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now()
+        }] : [];
+        delete employee.advance;
+        delete employee.advanceDate;
+    }
+    
     $('#editEmployeeId').val(employee.id);
     $('#editEmployeeName').val(employee.name);
     $('#editEmployeePosition').val(employee.position);
     $('#editEmployeeSalary').val(employee.salary);
-    $('#editEmployeeAdvance').val(employee.advance);
-    $('#editEmployeeAdvanceDate').val(employee.advanceDate || new Date().toISOString().split('T')[0]);
+    
+    // For backwards compatibility, show the latest advance
+    const latestAdvance = employee.advances && employee.advances.length > 0 ? 
+        employee.advances[employee.advances.length - 1] : { amount: 0, date: new Date().toISOString().split('T')[0] };
+    
+    $('#editEmployeeAdvance').val(latestAdvance.amount);
+    $('#editEmployeeAdvanceDate').val(latestAdvance.date);
     
     $('#editEmployeeModal').modal('show');
 }
@@ -604,8 +694,41 @@ function updateEmployee() {
         employee.name = name;
         employee.position = position;
         employee.salary = salary;
-        employee.advance = advance;
-        employee.advanceDate = advanceDate || employee.advanceDate || new Date().toISOString().split('T')[0];
+        
+        // Migration: Convert old single advance to new array format
+        if (employee.advance !== undefined && !employee.advances) {
+            employee.advances = employee.advance > 0 ? [{
+                amount: employee.advance,
+                date: employee.advanceDate || new Date().toISOString().split('T')[0],
+                id: Date.now()
+            }] : [];
+            delete employee.advance;
+            delete employee.advanceDate;
+        }
+        
+        // Ensure advances array exists
+        if (!employee.advances) {
+            employee.advances = [];
+        }
+        
+        // Update the latest advance if provided
+        if (advance > 0) {
+            if (employee.advances.length > 0) {
+                // Update the latest advance
+                employee.advances[employee.advances.length - 1] = {
+                    amount: advance,
+                    date: advanceDate || new Date().toISOString().split('T')[0],
+                    id: employee.advances[employee.advances.length - 1].id || Date.now()
+                };
+            } else {
+                // Add new advance
+                employee.advances.push({
+                    amount: advance,
+                    date: advanceDate || new Date().toISOString().split('T')[0],
+                    id: Date.now()
+                });
+            }
+        }
         
         saveEmployeesToStorage();
         
@@ -704,7 +827,32 @@ function updateStatistics() {
             absentToday++;
         }
         
-        totalAdvances += employee.advance || 0;
+        // Migration: Convert old single advance to new array format
+        if (employee.advance !== undefined && !employee.advances) {
+            employee.advances = employee.advance > 0 ? [{
+                amount: employee.advance,
+                date: employee.advanceDate || new Date().toISOString().split('T')[0],
+                id: Date.now()
+            }] : [];
+            delete employee.advance;
+            delete employee.advanceDate;
+        }
+        
+        // Calculate total advances for current month
+        if (employee.advances && Array.isArray(employee.advances)) {
+            const currentYear = currentMonth.getFullYear();
+            const currentMonthIndex = currentMonth.getMonth();
+            
+            employee.advances.forEach(advance => {
+                const advanceDate = new Date(advance.date);
+                if (advanceDate.getFullYear() === currentYear && advanceDate.getMonth() === currentMonthIndex) {
+                    totalAdvances += advance.amount || 0;
+                }
+            });
+        } else {
+            // Fallback for legacy data
+            totalAdvances += employee.advance || 0;
+        }
     });
     
     $('#presentToday').text(presentToday);
@@ -877,6 +1025,352 @@ function showDeleteConfirmation(title, message, description, onConfirm) {
 setInterval(() => {
     saveEmployeesToStorage();
 }, 30000); // Save every 30 seconds
+
+// Add advance to existing employee
+function addAdvanceToEmployee(employeeId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) return;
+    
+    $('#advanceEmployeeId').val(employee.id);
+    $('#advanceEmployeeName').val(employee.name);
+    $('#advanceAmount').val('');
+    $('#advanceDate').val(new Date().toISOString().split('T')[0]);
+    $('#advanceNotes').val('');
+    
+    $('#addAdvanceModal').modal('show');
+}
+
+// Add new advance
+function addAdvance() {
+    const employeeId = parseInt($('#advanceEmployeeId').val());
+    const amount = parseFloat($('#advanceAmount').val()) || 0;
+    const date = $('#advanceDate').val();
+    const notes = $('#advanceNotes').val().trim();
+    
+    if (amount <= 0) {
+        showNotification('يرجى إدخال مبلغ السلفة', 'danger');
+        return;
+    }
+    
+    if (!date) {
+        showNotification('يرجى اختيار تاريخ السلفة', 'danger');
+        return;
+    }
+    
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) {
+        showNotification('لم يتم العثور على الموظف', 'danger');
+        return;
+    }
+    
+    // Migration: Convert old single advance to new array format
+    if (employee.advance !== undefined && !employee.advances) {
+        employee.advances = employee.advance > 0 ? [{
+            amount: employee.advance,
+            date: employee.advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now() - 1000
+        }] : [];
+        delete employee.advance;
+        delete employee.advanceDate;
+    }
+    
+    // Ensure advances array exists
+    if (!employee.advances) {
+        employee.advances = [];
+    }
+    
+    // Add new advance
+    const newAdvance = {
+        id: Date.now(),
+        amount: amount,
+        date: date,
+        notes: notes,
+        createdAt: new Date().toISOString()
+    };
+    
+    employee.advances.push(newAdvance);
+    
+    saveEmployeesToStorage();
+    
+    // Update filtered employees if needed
+    const filteredIndex = filteredEmployees.findIndex(emp => emp.id === employeeId);
+    if (filteredIndex !== -1) {
+        filteredEmployees[filteredIndex] = employee;
+    }
+    
+    renderTable();
+    updateStatistics();
+    
+    // Refresh the expandable row if it's open
+    const expandableRow = $(`#expandableRow${employeeId}`);
+    if (expandableRow.hasClass('show')) {
+        loadAdvanceDetailsInRow(employeeId);
+    }
+    
+    $('#addAdvanceModal').modal('hide');
+    showNotification(`تم إضافة سلفة بمبلغ ${amount.toLocaleString()} ج.م للموظف ${employee.name}`, 'success');
+}
+
+// Toggle advance row (expandable)
+function toggleAdvanceRow(employeeId) {
+    const expandableRow = $(`#expandableRow${employeeId}`);
+    const toggleIcon = $(`#advanceToggleIcon${employeeId}`);
+    
+    if (expandableRow.hasClass('show')) {
+        expandableRow.collapse('hide');
+        toggleIcon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    } else {
+        // Load advance details into the expandable row
+        loadAdvanceDetailsInRow(employeeId);
+        expandableRow.collapse('show');
+        toggleIcon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+    }
+}
+
+// Load advance details in expandable row
+function loadAdvanceDetailsInRow(employeeId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) return;
+    
+    // Migration: Convert old single advance to new array format
+    if (employee.advance !== undefined && !employee.advances) {
+        employee.advances = employee.advance > 0 ? [{
+            amount: employee.advance,
+            date: employee.advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now()
+        }] : [];
+        delete employee.advance;
+        delete employee.advanceDate;
+    }
+    
+    // Ensure advances array exists
+    if (!employee.advances) {
+        employee.advances = [];
+    }
+    
+    // Filter advances for current month
+    const currentYear = currentMonth.getFullYear();
+    const currentMonthIndex = currentMonth.getMonth();
+    
+    const monthlyAdvances = employee.advances.filter(advance => {
+        const advanceDate = new Date(advance.date);
+        return advanceDate.getFullYear() === currentYear && advanceDate.getMonth() === currentMonthIndex;
+    });
+    
+    let content = `
+        <div class="row">
+            <div class="col-md-8">
+                <h6 class="mb-3">سلف شهر ${currentMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}</h6>
+    `;
+    
+    if (monthlyAdvances.length === 0) {
+        content += `
+                <div class="text-muted">
+                    <i class="fas fa-info-circle me-2"></i>
+                    لا توجد سلف في هذا الشهر
+                </div>
+        `;
+    } else {
+        content += `
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>المبلغ</th>
+                                <th>التاريخ</th>
+                                <th>الملاحظات</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        monthlyAdvances.forEach(advance => {
+            const formattedDate = new Date(advance.date).toLocaleDateString('ar-EG', {
+                day: 'numeric',
+                month: 'short'
+            });
+            
+            content += `
+                <tr>
+                    <td><strong>${advance.amount.toLocaleString()} ج.م</strong></td>
+                    <td>${formattedDate}</td>
+                    <td>${advance.notes || '-'}</td>
+                    <td>
+                        <button class="btn btn-xs btn-danger" onclick="deleteAdvance(${employee.id}, ${advance.id})" title="حذف السلفة">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        content += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 p-2 bg-light rounded">
+                    <small><strong>إجمالي السلف: ${monthlyAdvances.reduce((sum, advance) => sum + advance.amount, 0).toLocaleString()} ج.م</strong></small>
+                </div>
+        `;
+    }
+    
+    content += `
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-sm btn-primary" onclick="addAdvanceToEmployee(${employee.id})">
+                        <i class="fas fa-plus me-1"></i> إضافة سلفة جديدة
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="toggleAdvanceDetails(${employee.id})">
+                        <i class="fas fa-list me-1"></i> عرض جميع السلف
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $(`#advanceDetails${employeeId}`).html(content);
+}
+
+// Toggle advance details
+function toggleAdvanceDetails(employeeId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) return;
+    
+    // Migration: Convert old single advance to new array format
+    if (employee.advance !== undefined && !employee.advances) {
+        employee.advances = employee.advance > 0 ? [{
+            amount: employee.advance,
+            date: employee.advanceDate || new Date().toISOString().split('T')[0],
+            id: Date.now()
+        }] : [];
+        delete employee.advance;
+        delete employee.advanceDate;
+    }
+    
+    // Ensure advances array exists
+    if (!employee.advances) {
+        employee.advances = [];
+    }
+    
+    // Filter advances for current month
+    const currentYear = currentMonth.getFullYear();
+    const currentMonthIndex = currentMonth.getMonth();
+    
+    const monthlyAdvances = employee.advances.filter(advance => {
+        const advanceDate = new Date(advance.date);
+        return advanceDate.getFullYear() === currentYear && advanceDate.getMonth() === currentMonthIndex;
+    });
+    
+    let content = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">سلف الموظف: ${employee.name}</h6>
+            <button class="btn btn-sm btn-primary" onclick="addAdvanceToEmployee(${employee.id})">
+                <i class="fas fa-plus me-1"></i> إضافة سلفة جديدة
+            </button>
+        </div>
+    `;
+    
+    if (monthlyAdvances.length === 0) {
+        content += `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-money-bill-wave fa-3x mb-3"></i>
+                <p>لا توجد سلف في هذا الشهر</p>
+            </div>
+        `;
+    } else {
+        content += `
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>المبلغ</th>
+                            <th>التاريخ</th>
+                            <th>الملاحظات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        monthlyAdvances.forEach(advance => {
+            const formattedDate = new Date(advance.date).toLocaleDateString('ar-EG', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            
+            content += `
+                <tr>
+                    <td><strong>${advance.amount.toLocaleString()} ج.م</strong></td>
+                    <td>${formattedDate}</td>
+                    <td>${advance.notes || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAdvance(${employee.id}, ${advance.id})" title="حذف السلفة">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        content += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3 p-3 bg-light rounded">
+                <strong>إجمالي السلف في ${currentMonth.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' })}: 
+                ${monthlyAdvances.reduce((sum, advance) => sum + advance.amount, 0).toLocaleString()} ج.م</strong>
+            </div>
+        `;
+    }
+    
+    $('#advanceDetailsContent').html(content);
+    $('#advanceDetailsModal').modal('show');
+}
+
+// Delete specific advance
+function deleteAdvance(employeeId, advanceId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee || !employee.advances) return;
+    
+    const advance = employee.advances.find(adv => adv.id === advanceId);
+    if (!advance) return;
+    
+    showDeleteConfirmation(
+        'حذف السلفة',
+        `هل أنت متأكد من حذف السلفة بمبلغ ${advance.amount.toLocaleString()} ج.م؟`,
+        'لا يمكن التراجع عن هذا الإجراء.',
+        () => {
+            employee.advances = employee.advances.filter(adv => adv.id !== advanceId);
+            
+            saveEmployeesToStorage();
+            
+            // Update filtered employees if needed
+            const filteredIndex = filteredEmployees.findIndex(emp => emp.id === employeeId);
+            if (filteredIndex !== -1) {
+                filteredEmployees[filteredIndex] = employee;
+            }
+            
+            renderTable();
+            updateStatistics();
+            
+            // Refresh the advance details modal if it's open
+            if ($('#advanceDetailsModal').hasClass('show')) {
+                toggleAdvanceDetails(employeeId);
+            }
+            
+            // Refresh the expandable row if it's open
+            const expandableRow = $(`#expandableRow${employeeId}`);
+            if (expandableRow.hasClass('show')) {
+                loadAdvanceDetailsInRow(employeeId);
+            }
+            
+            showNotification('تم حذف السلفة بنجاح', 'success');
+        }
+    );
+}
 
 // Initialize service worker for offline functionality (if available)
 if ('serviceWorker' in navigator) {
