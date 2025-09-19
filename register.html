@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل مستخدم جديد - نظام حضور شركة الذهبي</title>
+    
+    <!-- Bootstrap RTL CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .register-card {
+            max-width: 500px;
+            margin: 2rem auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+        }
+        .company-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 1rem;
+        }
+        .form-control:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .btn-register {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-register:hover {
+            background: linear-gradient(45deg, #218838, #1ea781);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        .password-strength {
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        .strength-weak { color: #dc3545; }
+        .strength-medium { color: #ffc107; }
+        .strength-strong { color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card register-card">
+                    <div class="card-header">
+                        <img src="images/elzahp.png" alt="شعار الشركة" class="company-logo">
+                        <h3 class="mb-0">تسجيل مستخدم جديد</h3>
+                        <p class="mb-0">نظام حضور شركة الذهبي</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Success/Error Messages -->
+                        <div id="messageContainer" class="mb-3" style="display: none;">
+                            <div id="messageAlert" class="alert" role="alert"></div>
+                        </div>
+
+                        <form id="registerForm">
+                            <!-- Email Field -->
+                            <div class="mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>
+                                    البريد الإلكتروني
+                                </label>
+                                <input type="email" class="form-control" id="email" required 
+                                       placeholder="أدخل البريد الإلكتروني">
+                                <div class="form-text">سيتم استخدام هذا البريد لتسجيل الدخول</div>
+                            </div>
+
+                            <!-- Location Field -->
+                            <div class="mb-3">
+                                <label for="location" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    الموقع
+                                </label>
+                                <select class="form-control" id="location" required>
+                                    <option value="">اختر الموقع</option>
+                                    <!-- Options will be loaded by JavaScript -->
+                                </select>
+                            </div>
+
+                            <!-- Password Field -->
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>
+                                    كلمة المرور
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" required 
+                                           placeholder="أدخل كلمة المرور">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div id="passwordStrength" class="password-strength"></div>
+                            </div>
+
+                            <!-- Confirm Password Field -->
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>
+                                    تأكيد كلمة المرور
+                                </label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="confirmPassword" required 
+                                           placeholder="أعد إدخال كلمة المرور">
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div id="passwordMatch" class="form-text"></div>
+                            </div>
+
+                            <!-- Admin Password Field -->
+                            <div class="mb-4">
+                                <label for="adminPassword" class="form-label">
+                                    <i class="fas fa-shield-alt me-2"></i>
+                                    كلمة مرور المدير للتأكيد
+                                </label>
+                                <input type="password" class="form-control" id="adminPassword" required 
+                                       placeholder="أدخل كلمة مرور المدير">
+                                <div class="form-text">مطلوبة لتأكيد عملية التسجيل</div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-register w-100" id="submitBtn">
+                                <i class="fas fa-user-plus me-2"></i>
+                                تسجيل المستخدم
+                            </button>
+                        </form>
+
+                        <!-- Back to Login -->
+                        <div class="text-center mt-4">
+                            <a href="login.html" class="text-decoration-none">
+                                <i class="fas fa-arrow-right me-2"></i>
+                                العودة لتسجيل الدخول
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Check if admin is logged in (only admin can register users)
+            if (!window.AttendanceAuth.isLoggedIn() || !window.AttendanceAuth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            loadLocations();
+            setupPasswordValidation();
+            setupFormValidation();
+        });
+
+        function loadLocations() {
+            // Get locations from localStorage (using the same format as main app)
+            const locations = JSON.parse(localStorage.getItem('attendanceLocations')) || [];
+            const locationSelect = $('#location');
+            
+            locationSelect.empty().append('<option value="">اختر الموقع</option>');
+            
+            // If no locations exist, add default location
+            if (locations.length === 0) {
+                const defaultLocation = { id: 1, name: 'المكتب الرئيسي' };
+                locations.push(defaultLocation);
+                localStorage.setItem('attendanceLocations', JSON.stringify(locations));
+            }
+            
+            locations.forEach(location => {
+                locationSelect.append(`<option value="${location.name}">${location.name}</option>`);
+            });
+        }
+
+        function setupPasswordValidation() {
+            const passwordInput = $('#password');
+            const confirmPasswordInput = $('#confirmPassword');
+            const strengthDiv = $('#passwordStrength');
+            const matchDiv = $('#passwordMatch');
+
+            // Password strength checker
+            passwordInput.on('input', function() {
+                const password = $(this).val();
+                const strength = checkPasswordStrength(password);
+                
+                strengthDiv.removeClass('strength-weak strength-medium strength-strong');
+                
+                if (password.length === 0) {
+                    strengthDiv.text('');
+                    return;
+                }
+
+                if (strength.score === 1) {
+                    strengthDiv.addClass('strength-weak').text('ضعيفة');
+                } else if (strength.score === 2) {
+                    strengthDiv.addClass('strength-medium').text('متوسطة');
+                } else {
+                    strengthDiv.addClass('strength-strong').text('قوية');
+                }
+            });
+
+            // Password match checker
+            function checkPasswordMatch() {
+                const password = passwordInput.val();
+                const confirmPassword = confirmPasswordInput.val();
+                
+                if (confirmPassword.length === 0) {
+                    matchDiv.text('').removeClass('text-success text-danger');
+                    return;
+                }
+
+                if (password === confirmPassword) {
+                    matchDiv.text('كلمات المرور متطابقة ✓').removeClass('text-danger').addClass('text-success');
+                } else {
+                    matchDiv.text('كلمات المرور غير متطابقة ✗').removeClass('text-success').addClass('text-danger');
+                }
+            }
+
+            confirmPasswordInput.on('input', checkPasswordMatch);
+            passwordInput.on('input', checkPasswordMatch);
+
+            // Toggle password visibility
+            $('#togglePassword').click(function() {
+                const type = passwordInput.attr('type') === 'password' ? 'text' : 'password';
+                passwordInput.attr('type', type);
+                $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+            });
+
+            $('#toggleConfirmPassword').click(function() {
+                const type = confirmPasswordInput.attr('type') === 'password' ? 'text' : 'password';
+                confirmPasswordInput.attr('type', type);
+                $(this).find('i').toggleClass('fa-eye fa-eye-slash');
+            });
+        }
+
+        function checkPasswordStrength(password) {
+            let score = 1;
+            
+            if (password.length >= 8) score++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+            if (/\d/.test(password)) score++;
+            if (/[^a-zA-Z\d]/.test(password)) score++;
+            
+            return { score: Math.min(score, 3) };
+        }
+
+        function setupFormValidation() {
+            $('#registerForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const email = $('#email').val().trim();
+                const password = $('#password').val();
+                const confirmPassword = $('#confirmPassword').val();
+                const location = $('#location').val();
+                const adminPassword = $('#adminPassword').val();
+
+                // Validate form
+                if (!email || !password || !confirmPassword || !location || !adminPassword) {
+                    showMessage('يرجى ملء جميع الحقول المطلوبة', 'danger');
+                    return;
+                }
+
+                if (password !== confirmPassword) {
+                    showMessage('كلمات المرور غير متطابقة', 'danger');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    showMessage('يجب أن تكون كلمة المرور على الأقل 6 أحرف', 'danger');
+                    return;
+                }
+
+                // Disable submit button
+                $('#submitBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>جارٍ التسجيل...');
+
+                // Register user
+                const result = window.AttendanceAuth.register(email, password, location, adminPassword);
+                
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    $('#registerForm')[0].reset();
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                } else {
+                    showMessage(result.message, 'danger');
+                }
+
+                // Re-enable submit button
+                $('#submitBtn').prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>تسجيل المستخدم');
+            });
+        }
+
+        function showMessage(message, type) {
+            const messageContainer = $('#messageContainer');
+            const messageAlert = $('#messageAlert');
+            
+            messageAlert.removeClass('alert-success alert-danger alert-warning')
+                       .addClass(`alert-${type}`)
+                       .text(message);
+            
+            messageContainer.show();
+            
+            setTimeout(() => {
+                messageContainer.fadeOut();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

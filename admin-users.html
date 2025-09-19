@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المستخدمين - نظام حضور شركة الذهبي</title>
+    
+    <!-- Bootstrap RTL CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="bg-primary text-white p-3 mb-4">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1 class="mb-0">
+                        <img src="images/elzahp.png" alt="شعار الشركة" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-left: 10px;">
+                        إدارة المستخدمين - نظام حضور شركة الذهبي
+                    </h1>
+                </div>
+                <div class="col-auto d-flex align-items-center gap-3">
+                    <!-- User Info -->
+                    <div class="user-info d-flex align-items-center">
+                        <div class="user-avatar">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <span class="user-name me-3" id="userName">مرحباً، المدير</span>
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <a href="index.html" class="btn btn-light">
+                        <i class="fas fa-home me-2"></i>
+                        الصفحة الرئيسية
+                    </a>
+                    
+                    <a href="register.html" class="btn btn-success">
+                        <i class="fas fa-user-plus me-2"></i>
+                        تسجيل مستخدم جديد
+                    </a>
+                    
+                    <!-- Logout Button -->
+                    <button class="btn btn-outline-light" id="logoutBtn" title="تسجيل الخروج">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        خروج
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-users fa-2x me-3"></i>
+                            <div>
+                                <h5 class="mb-0" id="totalUsers">0</h5>
+                                <small>إجمالي المستخدمين</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-shield fa-2x me-3"></i>
+                            <div>
+                                <h5 class="mb-0" id="adminUsers">1</h5>
+                                <small>المدراء</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user fa-2x me-3"></i>
+                            <div>
+                                <h5 class="mb-0" id="regularUsers">0</h5>
+                                <small>المستخدمون العاديون</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-dark text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-map-marker-alt fa-2x me-3"></i>
+                            <div>
+                                <h5 class="mb-0" id="totalLocations">0</h5>
+                                <small>إجمالي المواقع</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-table me-2"></i>
+                            قائمة المستخدمين
+                        </h5>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary btn-sm" onclick="refreshUsersList()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            تحديث
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="usersTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>البريد الإلكتروني</th>
+                                <th>الاسم</th>
+                                <th>الدور</th>
+                                <th>الموقع</th>
+                                <th>كلمة المرور</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Locations Table -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            قائمة المواقع
+                        </h5>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="locationsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>اسم الموقع</th>
+                                <th>عدد المستخدمين</th>
+                            </tr>
+                        </thead>
+                        <tbody id="locationsTableBody">
+                            <!-- Data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تعديل بيانات المستخدم</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserEmail">
+                        
+                        <div class="mb-3">
+                            <label for="editUserNewPassword" class="form-label">كلمة المرور الجديدة</label>
+                            <input type="password" class="form-control" id="editUserNewPassword" placeholder="اتركه فارغاً لعدم التغيير">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editUserLocation" class="form-label">الموقع</label>
+                            <select class="form-control" id="editUserLocation">
+                                <option value="">اختر الموقع</option>
+                                <!-- Options will be loaded by JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editAdminPassword" class="form-label">كلمة مرور المدير للتأكيد</label>
+                            <input type="password" class="form-control" id="editAdminPassword" required placeholder="أدخل كلمة مرور المدير">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="updateUser()">حفظ التغييرات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete User Modal -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">حذف المستخدم</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        هل أنت متأكد من حذف المستخدم <strong id="deleteUserEmail"></strong>؟
+                        <br>
+                        هذا الإجراء لا يمكن التراجع عنه.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="deleteAdminPassword" class="form-label">كلمة مرور المدير للتأكيد</label>
+                        <input type="password" class="form-control" id="deleteAdminPassword" required placeholder="أدخل كلمة مرور المدير">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">حذف المستخدم</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        let userToDelete = null;
+
+        $(document).ready(function() {
+            // Check if admin is logged in
+            if (!window.AttendanceAuth.isLoggedIn() || !window.AttendanceAuth.isAdmin()) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Update user name
+            const currentUser = window.AttendanceAuth.getCurrentUser();
+            if (currentUser) {
+                $('#userName').text(`مرحباً، ${currentUser.name}`);
+            }
+
+            // Logout functionality
+            $('#logoutBtn').click(function() {
+                window.AttendanceAuth.logout();
+            });
+
+            loadUsersData();
+            loadLocationsData();
+            updateStatistics();
+        });
+
+        function loadUsersData() {
+            const users = window.AttendanceAuth.getAllUsers();
+            const tbody = $('#usersTableBody');
+            tbody.empty();
+
+            if (!users) {
+                tbody.append('<tr><td colspan="6" class="text-center">لا توجد بيانات</td></tr>');
+                return;
+            }
+
+            Object.values(users).forEach(user => {
+                const isAdmin = user.role === 'admin';
+                const passwordDisplay = '*'.repeat(user.password.length);
+                
+                const row = `
+                    <tr>
+                        <td>${user.email}</td>
+                        <td>${user.name}</td>
+                        <td>
+                            <span class="badge ${isAdmin ? 'bg-success' : 'bg-primary'}">
+                                <i class="fas ${isAdmin ? 'fa-user-shield' : 'fa-user'} me-1"></i>
+                                ${isAdmin ? 'مدير' : 'مستخدم'}
+                            </span>
+                        </td>
+                        <td>${user.location || '<span class="text-muted">جميع المواقع</span>'}</td>
+                        <td>
+                            <span class="text-muted">${passwordDisplay}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editUser('${user.email}')" 
+                                        ${isAdmin ? 'disabled title="لا يمكن تعديل حساب المدير"' : ''}>
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${user.email}')"
+                                        ${isAdmin ? 'disabled title="لا يمكن حذف حساب المدير"' : ''}>
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+        }
+
+        function loadLocationsData() {
+            const locations = JSON.parse(localStorage.getItem('attendanceLocations')) || [];
+            const users = window.AttendanceAuth.getAllUsers();
+            const tbody = $('#locationsTableBody');
+            
+            tbody.empty();
+
+            if (locations.length === 0) {
+                tbody.append('<tr><td colspan="2" class="text-center">لا توجد مواقع</td></tr>');
+                return;
+            }
+
+            // Count users per location
+            const locationCounts = {};
+            Object.values(users || {}).forEach(user => {
+                if (user.location) {
+                    locationCounts[user.location] = (locationCounts[user.location] || 0) + 1;
+                }
+            });
+
+            locations.forEach(location => {
+                const locationName = location.name || location; // Support both formats
+                const userCount = locationCounts[locationName] || 0;
+                const row = `
+                    <tr>
+                        <td>${locationName}</td>
+                        <td>
+                            <span class="badge bg-info">${userCount} مستخدم</span>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+
+            // Load locations in edit modal
+            const editLocationSelect = $('#editUserLocation');
+            editLocationSelect.empty().append('<option value="">اختر الموقع</option>');
+            locations.forEach(location => {
+                const locationName = location.name || location; // Support both formats
+                editLocationSelect.append(`<option value="${locationName}">${locationName}</option>`);
+            });
+        }
+
+        function updateStatistics() {
+            const users = window.AttendanceAuth.getAllUsers();
+            const locations = JSON.parse(localStorage.getItem('attendanceLocations')) || [];
+            
+            if (!users) return;
+
+            const usersList = Object.values(users);
+            const totalUsers = usersList.length;
+            const adminUsers = usersList.filter(user => user.role === 'admin').length;
+            const regularUsers = totalUsers - adminUsers;
+
+            $('#totalUsers').text(totalUsers);
+            $('#adminUsers').text(adminUsers);
+            $('#regularUsers').text(regularUsers);
+            $('#totalLocations').text(locations.length);
+        }
+
+        function refreshUsersList() {
+            loadUsersData();
+            loadLocationsData();
+            updateStatistics();
+        }
+
+        function editUser(email) {
+            const users = window.AttendanceAuth.getAllUsers();
+            const user = users[email];
+            
+            if (!user) return;
+
+            $('#editUserEmail').val(email);
+            $('#editUserNewPassword').val('');
+            $('#editUserLocation').val(user.location || '');
+            $('#editAdminPassword').val('');
+
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        }
+
+        function updateUser() {
+            const email = $('#editUserEmail').val();
+            const newPassword = $('#editUserNewPassword').val().trim();
+            const newLocation = $('#editUserLocation').val();
+            const adminPassword = $('#editAdminPassword').val();
+
+            if (!adminPassword) {
+                alert('يرجى إدخال كلمة مرور المدير');
+                return;
+            }
+
+            let result;
+
+            // Update password if provided
+            if (newPassword) {
+                result = window.AttendanceAuth.updateUserPassword(email, newPassword, adminPassword);
+                if (!result.success) {
+                    alert(result.message);
+                    return;
+                }
+            }
+
+            // Update location
+            result = window.AttendanceAuth.updateUserLocation(email, newLocation, adminPassword);
+            
+            if (result.success) {
+                alert(result.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editUserModal'));
+                modal.hide();
+                refreshUsersList();
+            } else {
+                alert(result.message);
+            }
+        }
+
+        function deleteUser(email) {
+            userToDelete = email;
+            $('#deleteUserEmail').text(email);
+            $('#deleteAdminPassword').val('');
+
+            const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+            modal.show();
+        }
+
+        function confirmDeleteUser() {
+            if (!userToDelete) return;
+
+            const adminPassword = $('#deleteAdminPassword').val();
+            
+            if (!adminPassword) {
+                alert('يرجى إدخال كلمة مرور المدير');
+                return;
+            }
+
+            const result = window.AttendanceAuth.deleteUser(userToDelete, adminPassword);
+            
+            if (result.success) {
+                alert(result.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteUserModal'));
+                modal.hide();
+                refreshUsersList();
+                userToDelete = null;
+            } else {
+                alert(result.message);
+            }
+        }
+    </script>
+</body>
+</html>

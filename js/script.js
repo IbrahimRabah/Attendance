@@ -444,14 +444,43 @@ function getAttendanceKey(date, dayIndex) {
 function getWeeksInMonth(date) {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Find the first day of the month
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+    
+    // Find the first Saturday of the week containing the 1st of the month
+    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0=Sunday, 6=Saturday
+    const firstSaturday = new Date(firstDayOfMonth);
+    
+    // Calculate how many days to go back to reach Saturday
+    // Saturday=6, so if first day is Sunday(0), go back 1 day
+    // If first day is Monday(1), go back 2 days, etc.
+    const daysToGoBack = firstDayOfWeek === 6 ? 0 : (firstDayOfWeek === 0 ? 1 : firstDayOfWeek + 1);
+    firstSaturday.setDate(firstSaturday.getDate() - daysToGoBack);
+    
+    // Find the last day we need to include (complete the last week)
+    const lastDayOfWeek = lastDayOfMonth.getDay();
+    const lastThursday = new Date(lastDayOfMonth);
+    
+    // Calculate how many days to go forward to reach Thursday (end of our work week)
+    // Thursday=4, if last day is Thursday(4), no need to go forward
+    // If last day is Friday(5), go back 1 day, if Saturday(6), go back 2 days
+    // If last day is Sunday(0), go forward 4 days, Monday(1) go forward 3 days, etc.
+    let daysToGoForward;
+    if (lastDayOfWeek <= 4) {
+        daysToGoForward = 4 - lastDayOfWeek; // Go forward to Thursday
+    } else {
+        daysToGoForward = 4 + (7 - lastDayOfWeek); // Go to next week's Thursday
+    }
+    lastThursday.setDate(lastThursday.getDate() + daysToGoForward);
     
     const weeks = [];
     let currentWeek = [];
+    let currentDate = new Date(firstSaturday);
     
-    // Go through each day of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-        const currentDate = new Date(year, month, day);
+    // Generate weeks from first Saturday to last Thursday
+    while (currentDate <= lastThursday) {
         const dayOfWeek = currentDate.getDay(); // 0=Sunday, 6=Saturday
         
         // Convert to our week structure (Saturday=0, Sunday=1, ..., Thursday=5)
@@ -459,14 +488,26 @@ function getWeeksInMonth(date) {
         
         // Start new week on Saturday (ourDayIndex = 0)
         if (ourDayIndex === 0 && currentWeek.length > 0) {
-            weeks.push([...currentWeek]);
+            // Only include weeks that have at least one day from the current month
+            const weekHasCurrentMonthDay = currentWeek.some(d => d.getMonth() === month);
+            if (weekHasCurrentMonthDay) {
+                weeks.push([...currentWeek]);
+            }
             currentWeek = [];
         }
         
-        currentWeek.push(currentDate);
+        // Only include weekdays (Saturday to Thursday, ourDayIndex 0-5)
+        if (ourDayIndex <= 5) {
+            currentWeek.push(new Date(currentDate));
+        }
         
-        // If it's the last day of the month, push the current week
-        if (day === daysInMonth && currentWeek.length > 0) {
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Push the last week if it has days from the current month
+    if (currentWeek.length > 0) {
+        const weekHasCurrentMonthDay = currentWeek.some(d => d.getMonth() === month);
+        if (weekHasCurrentMonthDay) {
             weeks.push([...currentWeek]);
         }
     }
