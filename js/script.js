@@ -23,8 +23,10 @@ $(document).ready(function() {
     setupLogout();
     
     initializeDatePicker();
+    loadLocationsFromStorage();
     loadEmployeesFromStorage();
     console.log('Employees loaded:', employees.length);
+    updateLocationDropdowns();
     displayCurrentDate();
     setCurrentWeekBasedOnToday();
     renderWeekPagination();
@@ -33,6 +35,11 @@ $(document).ready(function() {
     
     // Initialize employee filter
     $('#employeeFilter').on('keyup', function() {
+        filterEmployeesByName();
+    });
+    
+    // Initialize location filter
+    $('#locationFilter').on('change', function() {
         filterEmployeesByName();
     });
     
@@ -53,13 +60,23 @@ $(document).ready(function() {
 });
 // Generate and display the month report for all employees
 function generateMonthReport() {
+    const selectedLocationId = $('#reportLocationFilter').val();
+    let reportEmployees = [...employees];
+    
+    // Filter by location if selected
+    if (selectedLocationId !== '') {
+        reportEmployees = reportEmployees.filter(employee => 
+            employee.locationId == selectedLocationId
+        );
+    }
+    
     let reportRows = '';
     let totalSalaries = 0;
     let totalAdvances = 0;
     let totalRemaining = 0;
     let totalAbsent = 0;
 
-    employees.forEach(emp => {
+    reportEmployees.forEach(emp => {
         const monthlyStats = calculateMonthlyAttendance(emp);
         const advanceInfo = getMonthlyAdvanceWithDate(emp);
         const deductions = calculateTotalDeductions(emp);
@@ -69,11 +86,12 @@ function generateMonthReport() {
             <tr>
                 <td>${emp.name}</td>
                 <td>${emp.position || ''}</td>
-                <td>${monthlyStats.absentDays}</td>
+                <td>${getLocationName(emp.locationId)}</td>
                 <td>${emp.salary ? emp.salary.toLocaleString() : ''}</td>
-                <td>${remaining.toLocaleString()}</td>
-                <td>${deductions.totalDeductions.toLocaleString()}</td>
+                <td>${monthlyStats.absentDays}</td>
                 <td>${advanceInfo.amount ? advanceInfo.amount.toLocaleString() : 0}</td>
+                <td>${deductions.totalDeductions.toLocaleString()}</td>
+                <td>${remaining.toLocaleString()}</td>
             </tr>
         `;
         totalSalaries += emp.salary || 0;
@@ -85,12 +103,12 @@ function generateMonthReport() {
     // Summary row
     let summaryRow = `
         <tr class="table-info fw-bold">
-            <td colspan="2">الإجمالي</td>
-            <td>${totalAbsent}</td>
+            <td colspan="3">الإجمالي</td>
             <td>${totalSalaries.toLocaleString()}</td>
-            <td>${totalRemaining.toLocaleString()}</td>
-            <td></td>
+            <td>${totalAbsent}</td>
             <td>${totalAdvances.toLocaleString()}</td>
+            <td></td>
+            <td>${totalRemaining.toLocaleString()}</td>
         </tr>
     `;
 
@@ -128,11 +146,12 @@ function generateMonthReport() {
                     <tr>
                         <th>اسم الموظف</th>
                         <th>الوظيفة</th>
-                        <th>أيام الغياب</th>
+                        <th>الموقع</th>
                         <th>المرتب</th>
-                        <th>الباقي من المرتب</th>
-                        <th>إجمالي الخصم</th>
+                        <th>أيام الغياب</th>
                         <th>السلف</th>
+                        <th>إجمالي الخصم</th>
+                        <th>صافي المرتب</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -241,6 +260,19 @@ function loadEmployeesFromStorage() {
     const stored = localStorage.getItem('attendanceEmployees');
     if (stored) {
         employees = JSON.parse(stored);
+        
+        // Migration: Add default location to existing employees
+        let needsSave = false;
+        employees.forEach(employee => {
+            if (!employee.locationId) {
+                employee.locationId = 1; // Assign to default location
+                needsSave = true;
+            }
+        });
+        
+        if (needsSave) {
+            saveEmployeesToStorage();
+        }
     } else {
         // Initialize with sample data
         employees = [
@@ -249,6 +281,7 @@ function loadEmployeesFromStorage() {
                 name: 'أحمد محمد علي',
                 position: 'مطور ويب',
                 salary: 5000,
+                locationId: 1,
                 advance: 500,
                 advanceDate: '2025-09-01',
                 attendance: {}
@@ -258,6 +291,7 @@ function loadEmployeesFromStorage() {
                 name: 'فاطمة أحمد حسن',
                 position: 'مصممة جرافيك',
                 salary: 4500,
+                locationId: 1,
                 advance: 300,
                 advanceDate: '2025-09-01',
                 attendance: {}
@@ -267,6 +301,7 @@ function loadEmployeesFromStorage() {
                 name: 'محمد عبد الله إبراهيم',
                 position: 'مدير مشروع',
                 salary: 6000,
+                locationId: 1,
                 advance: 800,
                 advanceDate: '2025-09-01',
                 attendance: {}
@@ -276,6 +311,7 @@ function loadEmployeesFromStorage() {
                 name: 'نور الدين خالد',
                 position: 'محاسب',
                 salary: 4000,
+                locationId: 1,
                 advance: 200,
                 advanceDate: '2025-09-01',
                 attendance: {}
@@ -285,6 +321,7 @@ function loadEmployeesFromStorage() {
                 name: 'مريم سعد الدين',
                 position: 'مطورة تطبيقات',
                 salary: 5500,
+                locationId: 1,
                 advance: 600,
                 advanceDate: '2025-09-01',
                 attendance: {}
@@ -298,6 +335,101 @@ function loadEmployeesFromStorage() {
 // Save employees to localStorage
 function saveEmployeesToStorage() {
     localStorage.setItem('attendanceEmployees', JSON.stringify(employees));
+}
+
+// Location Management Functions
+let locations = [];
+
+// Load locations from localStorage
+function loadLocationsFromStorage() {
+    const stored = localStorage.getItem('attendanceLocations');
+    if (stored) {
+        locations = JSON.parse(stored);
+    } else {
+        // Initialize with default location
+        locations = [
+            { id: 1, name: 'المكتب الرئيسي' }
+        ];
+        saveLocationsToStorage();
+    }
+}
+
+// Save locations to localStorage
+function saveLocationsToStorage() {
+    localStorage.setItem('attendanceLocations', JSON.stringify(locations));
+}
+
+// Add new location
+function addLocation() {
+    const locationName = $('#locationName').val().trim();
+    const password = $('#locationPassword').val();
+    
+    if (!locationName) {
+        showNotification('يرجى إدخال اسم الموقع', 'danger');
+        return;
+    }
+    
+    if (password !== 'Moumen@') {
+        showNotification('كلمة المرور غير صحيحة', 'danger');
+        return;
+    }
+    
+    // Check if location already exists
+    if (locations.some(loc => loc.name === locationName)) {
+        showNotification('هذا الموقع موجود بالفعل', 'warning');
+        return;
+    }
+    
+    const newLocation = {
+        id: Date.now(),
+        name: locationName
+    };
+    
+    locations.push(newLocation);
+    saveLocationsToStorage();
+    updateLocationDropdowns();
+    
+    // Reset form and close modal
+    $('#addLocationForm')[0].reset();
+    $('#addLocationModal').modal('hide');
+    
+    showNotification('تم إضافة الموقع بنجاح', 'success');
+}
+
+// Update location dropdowns in employee forms
+function updateLocationDropdowns() {
+    const addLocationSelect = $('#employeeLocation');
+    const editLocationSelect = $('#editEmployeeLocation');
+    const locationFilterSelect = $('#locationFilter');
+    const reportLocationFilterSelect = $('#reportLocationFilter');
+    
+    // Clear existing options except the first one
+    addLocationSelect.find('option:not(:first)').remove();
+    editLocationSelect.find('option:not(:first)').remove();
+    locationFilterSelect.find('option:not(:first)').remove();
+    reportLocationFilterSelect.find('option:not(:first)').remove();
+    
+    // Add location options
+    locations.forEach(location => {
+        const option = `<option value="${location.id}">${location.name}</option>`;
+        addLocationSelect.append(option);
+        editLocationSelect.append(option);
+        locationFilterSelect.append(option);
+        reportLocationFilterSelect.append(option);
+    });
+}
+
+// Get location name by ID
+function getLocationName(locationId) {
+    const location = locations.find(loc => loc.id === locationId);
+    return location ? location.name : 'غير محدد';
+}
+
+// Clear report filter
+function clearReportFilter() {
+    $('#reportLocationFilter').val('');
+    generateMonthReport();
+    showNotification('تم مسح فلتر التقرير', 'success');
 }
 
 // Generate attendance key for specific date
@@ -572,7 +704,7 @@ function renderTable() {
     if (filteredEmployees.length === 0) {
         tableBody.append(`
             <tr>
-                <td colspan="15" class="text-center text-muted py-4">
+                <td colspan="16" class="text-center text-muted py-4">
                     <i class="fas fa-users fa-2x mb-2"></i>
                     <br>
                     لا توجد بيانات موظفين لعرضها
@@ -603,6 +735,10 @@ function renderTable() {
             <td class="align-middle">${employee.position}</td>
             <td class="align-middle salary-cell">
                 ${employee.salary.toLocaleString()} ج.م
+            </td>
+            <td class="align-middle location-cell">
+                <i class="fas fa-map-marker-alt me-1"></i>
+                ${getLocationName(employee.locationId)}
             </td>
             <td class="align-middle text-success">
                 <i class="fas fa-check-circle me-1"></i>
@@ -779,11 +915,12 @@ function addEmployee() {
     const name = $('#employeeName').val().trim();
     const position = $('#employeePosition').val().trim();
     const salary = parseFloat($('#employeeSalary').val()) || 0;
+    const locationId = parseInt($('#employeeLocation').val()) || null;
     const advance = parseFloat($('#employeeAdvance').val()) || 0;
     const advanceDate = $('#employeeAdvanceDate').val();
     
-    if (!name || !position || salary <= 0) {
-        showNotification('يرجى ملء جميع الحقول المطلوبة', 'danger');
+    if (!name || !position || salary <= 0 || !locationId) {
+        showNotification('يرجى ملء جميع الحقول المطلوبة بما في ذلك الموقع', 'danger');
         return;
     }
     
@@ -802,6 +939,7 @@ function addEmployee() {
         name: name,
         position: position,
         salary: salary,
+        locationId: locationId,
         advances: advances,
         attendance: {}
     };
@@ -840,6 +978,7 @@ function editEmployee(employeeId) {
     $('#editEmployeeName').val(employee.name);
     $('#editEmployeePosition').val(employee.position);
     $('#editEmployeeSalary').val(employee.salary);
+    $('#editEmployeeLocation').val(employee.locationId || '');
     
     // For backwards compatibility, show the latest advance
     const latestAdvance = employee.advances && employee.advances.length > 0 ? 
@@ -857,11 +996,12 @@ function updateEmployee() {
     const name = $('#editEmployeeName').val().trim();
     const position = $('#editEmployeePosition').val().trim();
     const salary = parseFloat($('#editEmployeeSalary').val()) || 0;
+    const locationId = parseInt($('#editEmployeeLocation').val()) || null;
     const advance = parseFloat($('#editEmployeeAdvance').val()) || 0;
     const advanceDate = $('#editEmployeeAdvanceDate').val();
     
-    if (!name || !position || salary <= 0) {
-        showNotification('يرجى ملء جميع الحقول المطلوبة', 'danger');
+    if (!name || !position || salary <= 0 || !locationId) {
+        showNotification('يرجى ملء جميع الحقول المطلوبة بما في ذلك الموقع', 'danger');
         return;
     }
     
@@ -870,6 +1010,7 @@ function updateEmployee() {
         employee.name = name;
         employee.position = position;
         employee.salary = salary;
+        employee.locationId = locationId;
         
         // Migration: Convert old single advance to new array format
         if (employee.advance !== undefined && !employee.advances) {
@@ -949,15 +1090,26 @@ function deleteEmployee(employeeId) {
 // Filter employees by name
 function filterEmployeesByName() {
     const searchTerm = $('#employeeFilter').val().trim().toLowerCase();
+    const selectedLocationId = $('#locationFilter').val();
     
-    if (searchTerm === '') {
-        filteredEmployees = [...employees];
-    } else {
-        filteredEmployees = employees.filter(employee => 
+    let filtered = [...employees];
+    
+    // Filter by search term
+    if (searchTerm !== '') {
+        filtered = filtered.filter(employee => 
             employee.name.toLowerCase().includes(searchTerm) ||
             employee.position.toLowerCase().includes(searchTerm)
         );
     }
+    
+    // Filter by location
+    if (selectedLocationId !== '') {
+        filtered = filtered.filter(employee => 
+            employee.locationId == selectedLocationId
+        );
+    }
+    
+    filteredEmployees = filtered;
     
     // Apply absent filter if active
     if (isAbsentFilterActive) {
@@ -1008,6 +1160,7 @@ function filterData() {
 // Clear all filters
 function clearFilters() {
     $('#employeeFilter').val('');
+    $('#locationFilter').val('');
     $('#monthPicker').datepicker('setDate', new Date());
     currentMonth = new Date();
     setCurrentWeekBasedOnToday();
