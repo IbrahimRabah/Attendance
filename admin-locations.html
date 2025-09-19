@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة المواقع - شركة الذهبي</title>
+    
+    <!-- Bootstrap RTL CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <header class="bg-primary text-white p-3 mb-4">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h1 class="mb-0">
+                        <img src="images/elzahp.png" alt="شعار الشركة" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%; margin-left: 10px;">
+                        إدارة المواقع - شركة الذهبي
+                    </h1>
+                </div>
+                <div class="col-auto d-flex align-items-center gap-3">
+                    <!-- Navigation Buttons -->
+                    <a href="index.html" class="btn btn-light">
+                        <i class="fas fa-home me-2"></i>
+                        الصفحة الرئيسية
+                    </a>
+                    
+                    <!-- Logout Button -->
+                    <button class="btn btn-outline-light" id="logoutBtn" title="تسجيل الخروج">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        خروج
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Controls Section -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-map-marker-alt me-2"></i>
+                            إدارة المواقع
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">هنا يمكنك إدارة جميع مواقع العمل في الشركة: إضافة مواقع جديدة، تعديل أو حذف المواقع الموجودة.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLocationModal">
+                            <i class="fas fa-plus me-2"></i>
+                            إضافة موقع جديد
+                        </button>
+                        <button class="btn btn-danger ms-2" onclick="deleteAllLocations()" title="حذف جميع المواقع">
+                            <i class="fas fa-trash me-2"></i>
+                            حذف جميع المواقع
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-map-marker-alt fa-2x me-3"></i>
+                            <div>
+                                <h5 class="card-title">إجمالي المواقع</h5>
+                                <h3 id="totalLocations">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Locations Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-table me-2"></i>
+                    قائمة المواقع
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="locationsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="10%">#</th>
+                                <th width="30%">اسم الموقع</th>
+                                <th width="20%">عدد الموظفين</th>
+                                <th width="25%">تاريخ الإضافة</th>
+                                <th width="15%">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="locationsTableBody">
+                            <!-- Data will be loaded here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyState" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-map-marker-alt fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">لا توجد مواقع مضافة</h4>
+                    <p class="text-muted">ابدأ بإضافة موقع جديد للشركة</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLocationModal">
+                        <i class="fas fa-plus me-2"></i>
+                        إضافة أول موقع
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Location Modal -->
+    <div class="modal fade" id="addLocationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إضافة موقع جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addLocationForm">
+                        <div class="mb-3">
+                            <label for="locationName" class="form-label">اسم الموقع</label>
+                            <input type="text" class="form-control" id="locationName" required placeholder="أدخل اسم الموقع">
+                        </div>
+                        <div class="mb-3">
+                            <label for="locationPassword" class="form-label">كلمة المرور للتأكيد</label>
+                            <input type="password" class="form-control" id="locationPassword" required placeholder="أدخل كلمة المرور">
+                            <div class="form-text">يجب إدخال كلمة مرور المدير للتأكيد</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="addLocation()">إضافة الموقع</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Location Modal -->
+    <div class="modal fade" id="editLocationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تعديل الموقع</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editLocationForm">
+                        <input type="hidden" id="editLocationId">
+                        <div class="mb-3">
+                            <label for="editLocationName" class="form-label">اسم الموقع</label>
+                            <input type="text" class="form-control" id="editLocationName" required placeholder="أدخل اسم الموقع">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editLocationPassword" class="form-label">كلمة المرور للتأكيد</label>
+                            <input type="password" class="form-control" id="editLocationPassword" required placeholder="أدخل كلمة المرور">
+                            <div class="form-text">يجب إدخال كلمة مرور المدير للتأكيد</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-primary" onclick="updateLocation()">حفظ التغييرات</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteLocationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تأكيد الحذف</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        هل أنت متأكد من حذف هذا الموقع؟
+                    </div>
+                    <p>سيتم حذف الموقع: <strong id="deleteLocationName"></strong></p>
+                    <p class="text-danger"><small>تحذير: إذا كان هناك موظفون مرتبطون بهذا الموقع، فسيتم تحديث بياناتهم إلى "غير محدد"</small></p>
+                    <input type="hidden" id="deleteLocationId">
+                    <div class="mb-3">
+                        <label for="deleteLocationPassword" class="form-label">كلمة المرور للتأكيد</label>
+                        <input type="password" class="form-control" id="deleteLocationPassword" required placeholder="أدخل كلمة المرور">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeleteLocation()">حذف الموقع</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Authentication Script -->
+    <script src="js/auth.js"></script>
+    <!-- Main Script -->
+    <script src="js/script.js"></script>
+    
+    <!-- Locations Management Script -->
+    <script>
+        // Initialize the locations page
+        $(document).ready(function() {
+            console.log('Locations page initializing...');
+            
+            // Setup logout functionality
+            setupLogout();
+            
+            // Load and display locations
+            loadLocationsFromStorage();
+            renderLocationsTable();
+            updateStatistics();
+            
+            console.log('Locations page initialized');
+        });
+
+        // Render locations table
+        function renderLocationsTable() {
+            const tableBody = $('#locationsTableBody');
+            const emptyState = $('#emptyState');
+            
+            if (locations.length === 0) {
+                tableBody.hide();
+                emptyState.show();
+                return;
+            }
+            
+            tableBody.show();
+            emptyState.hide();
+            
+            let tableHTML = '';
+            
+            locations.forEach((location, index) => {
+                const employeeCount = getEmployeeCountForLocation(location.id);
+                const dateAdded = location.dateAdded ? new Date(location.dateAdded).toLocaleDateString('ar-SA') : 'غير محدد';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                                <strong>${location.name}</strong>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">${employeeCount} موظف</span>
+                        </td>
+                        <td>${dateAdded}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" onclick="editLocation(${location.id})" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteLocation(${location.id})" title="حذف">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.html(tableHTML);
+        }
+
+        // Get employee count for a specific location
+        function getEmployeeCountForLocation(locationId) {
+            if (typeof employees === 'undefined') {
+                return 0;
+            }
+            return employees.filter(emp => emp.locationId === locationId).length;
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            $('#totalLocations').text(locations.length);
+        }
+
+        // Add new location with validation
+        function addLocation() {
+            const locationName = $('#locationName').val().trim();
+            const password = $('#locationPassword').val();
+            
+            if (!locationName) {
+                showNotification('يرجى إدخال اسم الموقع', 'danger');
+                return;
+            }
+            
+            if (password !== 'Moumen@') {
+                showNotification('كلمة المرور غير صحيحة', 'danger');
+                return;
+            }
+            
+            // Check if location already exists
+            if (locations.some(loc => loc.name === locationName)) {
+                showNotification('هذا الموقع موجود بالفعل', 'warning');
+                return;
+            }
+            
+            const newLocation = {
+                id: Date.now(),
+                name: locationName,
+                dateAdded: new Date().toISOString()
+            };
+            
+            locations.push(newLocation);
+            saveLocationsToStorage();
+            renderLocationsTable();
+            updateStatistics();
+            
+            // Reset form and close modal
+            $('#addLocationForm')[0].reset();
+            $('#addLocationModal').modal('hide');
+            
+            showNotification('تم إضافة الموقع بنجاح', 'success');
+        }
+
+        // Edit location
+        function editLocation(locationId) {
+            const location = locations.find(loc => loc.id === locationId);
+            if (!location) {
+                showNotification('الموقع غير موجود', 'danger');
+                return;
+            }
+            
+            $('#editLocationId').val(location.id);
+            $('#editLocationName').val(location.name);
+            $('#editLocationPassword').val('');
+            
+            $('#editLocationModal').modal('show');
+        }
+
+        // Update location
+        function updateLocation() {
+            const locationId = parseInt($('#editLocationId').val());
+            const locationName = $('#editLocationName').val().trim();
+            const password = $('#editLocationPassword').val();
+            
+            if (!locationName) {
+                showNotification('يرجى إدخال اسم الموقع', 'danger');
+                return;
+            }
+            
+            if (password !== 'Moumen@') {
+                showNotification('كلمة المرور غير صحيحة', 'danger');
+                return;
+            }
+            
+            // Check if another location with the same name exists
+            if (locations.some(loc => loc.name === locationName && loc.id !== locationId)) {
+                showNotification('يوجد موقع آخر بنفس الاسم', 'warning');
+                return;
+            }
+            
+            const locationIndex = locations.findIndex(loc => loc.id === locationId);
+            if (locationIndex === -1) {
+                showNotification('الموقع غير موجود', 'danger');
+                return;
+            }
+            
+            locations[locationIndex].name = locationName;
+            saveLocationsToStorage();
+            renderLocationsTable();
+            
+            // Reset form and close modal
+            $('#editLocationForm')[0].reset();
+            $('#editLocationModal').modal('hide');
+            
+            showNotification('تم تحديث الموقع بنجاح', 'success');
+        }
+
+        // Delete location
+        function deleteLocation(locationId) {
+            const location = locations.find(loc => loc.id === locationId);
+            if (!location) {
+                showNotification('الموقع غير موجود', 'danger');
+                return;
+            }
+            
+            $('#deleteLocationId').val(location.id);
+            $('#deleteLocationName').text(location.name);
+            $('#deleteLocationPassword').val('');
+            
+            $('#deleteLocationModal').modal('show');
+        }
+
+        // Confirm delete location
+        function confirmDeleteLocation() {
+            const locationId = parseInt($('#deleteLocationId').val());
+            const password = $('#deleteLocationPassword').val();
+            
+            if (password !== 'Moumen@') {
+                showNotification('كلمة المرور غير صحيحة', 'danger');
+                return;
+            }
+            
+            const locationIndex = locations.findIndex(loc => loc.id === locationId);
+            if (locationIndex === -1) {
+                showNotification('الموقع غير موجود', 'danger');
+                return;
+            }
+            
+            // Remove the location
+            locations.splice(locationIndex, 1);
+            
+            // Update employees who were assigned to this location
+            if (typeof employees !== 'undefined') {
+                employees.forEach(emp => {
+                    if (emp.locationId === locationId) {
+                        emp.locationId = null;
+                    }
+                });
+                // Save updated employees if the variable exists
+                if (typeof saveEmployeesToStorage === 'function') {
+                    saveEmployeesToStorage();
+                }
+            }
+            
+            saveLocationsToStorage();
+            renderLocationsTable();
+            updateStatistics();
+            
+            $('#deleteLocationModal').modal('hide');
+            showNotification('تم حذف الموقع بنجاح', 'success');
+        }
+
+        // Delete all locations
+        function deleteAllLocations() {
+            if (locations.length === 0) {
+                showNotification('لا توجد مواقع للحذف', 'warning');
+                return;
+            }
+            
+            const password = prompt('أدخل كلمة المرور للتأكيد (Moumen@):');
+            if (password !== 'Moumen@') {
+                showNotification('كلمة المرور غير صحيحة', 'danger');
+                return;
+            }
+            
+            if (confirm('هل أنت متأكد من حذف جميع المواقع؟ لا يمكن التراجع عن هذا الإجراء.')) {
+                // Update all employees to have no location
+                if (typeof employees !== 'undefined') {
+                    employees.forEach(emp => {
+                        emp.locationId = null;
+                    });
+                    if (typeof saveEmployeesToStorage === 'function') {
+                        saveEmployeesToStorage();
+                    }
+                }
+                
+                locations = [];
+                saveLocationsToStorage();
+                renderLocationsTable();
+                updateStatistics();
+                
+                showNotification('تم حذف جميع المواقع بنجاح', 'success');
+            }
+        }
+
+        // Show notification function (if not already defined)
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = $(`
+                <div class="alert alert-${type} alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `);
+            
+            // Add to body
+            $('body').append(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                notification.alert('close');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

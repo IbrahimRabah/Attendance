@@ -382,7 +382,8 @@ function addLocation() {
     
     const newLocation = {
         id: Date.now(),
-        name: locationName
+        name: locationName,
+        dateAdded: new Date().toISOString()
     };
     
     locations.push(newLocation);
